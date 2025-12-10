@@ -1,0 +1,81 @@
+{
+    "version": "1.0",
+    "machines": [
+      { "id": "m1", "name": "Estación de Bombeo" },
+      { "id": "m2", "name": "Planta General" }
+    ],
+    "widgets": [
+      {
+        "type": "switch",
+        "title": "Bomba Principal",
+        "topic": "bombeo/santa_isabel/telemetria",
+        "width": "half",
+        "height": "md",
+        "commandTopic": "bombeo/santa_isabel/comandos",
+        "id": "w1",
+        "machineId": "m1"
+      },
+      {
+        "type": "gauge",
+        "title": "Carga Motor",
+        "topic": "bombeo/santa_isabel/telemetria",
+        "width": "half",
+        "height": "md",
+        "dataKey": "amperes",
+        "min": 0,
+        "max": 25,
+        "id": "w2",
+        "machineId": "m1"
+      },
+      {
+        "type": "chart",
+        "title": "Histórico Consumo",
+        "topic": "bombeo/santa_isabel/telemetria",
+        "width": "full",
+        "height": "lg",
+        "dataKey": "amperes",
+        "color": "#0ea5e9",
+        "min": 0,
+        "max": 25,
+        "id": "w3",
+        "machineId": "m1"
+      },
+      {
+        "type": "metric",
+        "title": "Voltaje Red",
+        "topic": "bombeo/santa_isabel/telemetria",
+        "width": "half",
+        "height": "md",
+        "dataKey": "voltaje",
+        "unit": "V",
+        "color": "purple",
+        "id": "w4",
+        "machineId": "m1"
+      },
+      {
+        "type": "chart",
+        "title": "Humedad Ambiente",
+        "topic": "planta/general/telemetria",
+        "width": "full",
+        "height": "md",
+        "dataKey": "humedad",
+        "color": "#06b6d4",
+        "min": 0,
+        "max": 100,
+        "id": "w5",
+        "machineId": "m2"
+      },
+      {
+        "type": "metric",
+        "title": "Nivel Tanque",
+        "topic": "planta/general/telemetria",
+        "width": "half",
+        "height": "md",
+        "dataKey": "nivel_tanque",
+        "unit": "Lts",
+        "color": "blue",
+        "id": "w6",
+        "machineId": "m2"
+      }
+    ]
+  }
