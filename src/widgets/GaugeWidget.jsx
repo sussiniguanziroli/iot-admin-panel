@@ -1,30 +1,56 @@
-import React, { useState, useEffect } from 'react';
-import mqtt from 'mqtt';
+import React, { useState, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { Zap } from 'lucide-react'; // <--- EL RAYITO
+import { Zap } from 'lucide-react';
 import BaseWidget from './BaseWidget';
+import { useMqtt } from '../context/MqttContext';
+
+const gaugeDataStore = {};
 
 const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100 }) => {
-  const [value, setValue] = useState(0);
-  const [lastUpdated, setLastUpdated] = useState(null); // Estado para la hora
+  const [value, setValue] = useState(() => gaugeDataStore[id] || 0);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const hasSubscribed = useRef(false);
+  
+  const { subscribeToTopic, lastMessage } = useMqtt();
 
   useEffect(() => {
-    const client = mqtt.connect('ws://localhost:9001');
-    client.on('connect', () => client.subscribe(topic));
+    if (!hasSubscribed.current) {
+      subscribeToTopic(topic);
+      hasSubscribed.current = true;
+    }
+  }, [topic, subscribeToTopic]);
 
-    client.on('message', (t, message) => {
+  useEffect(() => {
+    if (lastMessage && lastMessage.topic === topic) {
       try {
-        const payload = JSON.parse(message.toString());
+        const payload = JSON.parse(lastMessage.payload);
+        
+        // ✅ Handle both formats
+        let extractedValue;
+        
         if (payload[dataKey] !== undefined) {
-          setValue(Number(payload[dataKey]));
-          // Actualizamos la hora
-          setLastUpdated(new Date().toLocaleTimeString());
+          extractedValue = Number(payload[dataKey]);
+        } else if (payload.value !== undefined) {
+          extractedValue = Number(payload.value);
         }
-      } catch (e) {}
-    });
-
-    return () => client.end();
-  }, [topic, dataKey]);
+        
+        if (extractedValue !== undefined && !isNaN(extractedValue)) {
+          setValue(extractedValue);
+          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
+          gaugeDataStore[id] = extractedValue;
+        }
+      } catch (e) {
+        // Try parsing as plain number
+        const rawValue = lastMessage.payload.toString();
+        if (!isNaN(rawValue)) {
+          const numValue = parseFloat(rawValue);
+          setValue(numValue);
+          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
+          gaugeDataStore[id] = numValue;
+        }
+      }
+    }
+  }, [lastMessage, topic, dataKey, id]);
 
   const gaugeData = [{ value: value }, { value: Math.max(max - value, 0) }];
 
@@ -48,7 +74,7 @@ const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100 }) => {
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute bottom-0 text-center mb-2">
-          <span className="text-3xl font-bold text-slate-700">{value}</span>
+          <span className="text-3xl font-bold text-slate-700">{value.toFixed(1)}</span>
         </div>
       </div>
       <div className="flex justify-between text-xs text-slate-400 px-4 mt-2">

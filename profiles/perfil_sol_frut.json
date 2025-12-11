@@ -1,0 +1,162 @@
+{
+    "version": "1.0",
+    "machines": [
+      {
+        "id": "m4",
+        "name": "Motor 4"
+      },
+      {
+        "id": "m5",
+        "name": "Motor 5"
+      },
+      {
+        "id": "m6",
+        "name": "Motor 6"
+      },
+      {
+        "id": "reco",
+        "name": "Reconectador 101"
+      }
+    ],
+    "widgets": [
+      {
+        "id": "w_m4_amp",
+        "machineId": "m4",
+        "type": "gauge",
+        "title": "Corriente M4",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "corriente",
+        "min": 0,
+        "max": 40,
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "w_m4_st",
+        "machineId": "m4",
+        "type": "metric",
+        "title": "Estado Operativo",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "estado",
+        "color": "blue",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "w_m4_chart",
+        "machineId": "m4",
+        "type": "chart",
+        "title": "Curva de Carga M4",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "corriente",
+        "color": "#3b82f6",
+        "min": 0,
+        "max": 40,
+        "width": "full",
+        "height": "md"
+      },
+      {
+        "id": "w_m5_sw",
+        "machineId": "m5",
+        "type": "switch",
+        "title": "Mando Manual M5",
+        "topic": "solfrut/motores/m5/telemetria",
+        "commandTopic": "solfrut/motores/m5/comandos",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "w_m5_gauge",
+        "machineId": "m5",
+        "type": "gauge",
+        "title": "Corriente M5",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "corriente",
+        "min": 0,
+        "max": 40,
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "w_m5_metric",
+        "machineId": "m5",
+        "type": "metric",
+        "title": "Estado M5",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "estado",
+        "color": "green",
+        "width": "full",
+        "height": "sm"
+      },
+      {
+        "id": "w_m5_chart",
+        "machineId": "m5",
+        "type": "chart",
+        "title": "Curva de Carga M5",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "corriente",
+        "color": "#10b981",
+        "min": 0,
+        "max": 40,
+        "width": "full",
+        "height": "md"
+      },
+      {
+        "id": "w_m6_gauge",
+        "machineId": "m6",
+        "type": "gauge",
+        "title": "Corriente M6",
+        "topic": "solfrut/motores/m6/telemetria",
+        "dataKey": "corriente",
+        "min": 0,
+        "max": 50,
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "w_m6_metric",
+        "machineId": "m6",
+        "type": "metric",
+        "title": "Estado M6",
+        "topic": "solfrut/motores/m6/telemetria",
+        "dataKey": "estado",
+        "color": "orange",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "w_m6_chart",
+        "machineId": "m6",
+        "type": "chart",
+        "title": "Curva de Carga M6",
+        "topic": "solfrut/motores/m6/telemetria",
+        "dataKey": "corriente",
+        "color": "#f59e0b",
+        "min": 0,
+        "max": 50,
+        "width": "full",
+        "height": "md"
+      },
+      {
+        "id": "reco_sw",
+        "machineId": "reco",
+        "type": "switch",
+        "title": "Interruptor General",
+        "topic": "solfrut/reco1/estado",
+        "commandTopic": "solfrut/reco1/comandos",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "reco_st",
+        "machineId": "reco",
+        "type": "metric",
+        "title": "Estado Reconectador",
+        "topic": "solfrut/reco1/estado",
+        "dataKey": "estado",
+        "color": "purple",
+        "width": "half",
+        "height": "md"
+      }
+    ]
+  }

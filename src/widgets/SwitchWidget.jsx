@@ -1,36 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import mqtt from 'mqtt';
-import { Power, ToggleLeft } from 'lucide-react'; // Icono de Switch
+import React, { useState, useEffect, useRef } from 'react';
+import { Power, ToggleLeft } from 'lucide-react';
 import BaseWidget from './BaseWidget';
+import { useMqtt } from '../context/MqttContext';
+
+// ✅ STORE DATA OUTSIDE COMPONENT
+const switchStateStore = {};
 
 const SwitchWidget = ({ id, title, topic, commandTopic }) => {
-  const [client, setClient] = useState(null);
-  const [isOn, setIsOn] = useState(false);
+  // ✅ Initialize from store if exists
+  const [isOn, setIsOn] = useState(() => switchStateStore[id] || false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const hasSubscribed = useRef(false);
+  
+  const { subscribeToTopic, publishMessage, lastMessage } = useMqtt();
 
+  // ✅ Subscribe only once
   useEffect(() => {
-    const mqttClient = mqtt.connect('ws://localhost:9001');
-    mqttClient.on('connect', () => mqttClient.subscribe(topic));
+    if (!hasSubscribed.current) {
+      subscribeToTopic(topic);
+      hasSubscribed.current = true;
+    }
+  }, [topic, subscribeToTopic]);
 
-    mqttClient.on('message', (t, message) => {
+  // ✅ Listen and persist
+  useEffect(() => {
+    if (lastMessage && lastMessage.topic === topic) {
       try {
-        const payload = JSON.parse(message.toString());
+        const payload = JSON.parse(lastMessage.payload);
         if (payload.estado) {
-          setIsOn(payload.estado === 'ON');
-          setLastUpdated(new Date().toLocaleTimeString());
+          const newState = payload.estado === 'ON';
+          setIsOn(newState);
+          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
+          
+          // ✅ Save to persistent store
+          switchStateStore[id] = newState;
         }
-      } catch (e) {}
-    });
-
-    setClient(mqttClient);
-    return () => mqttClient.end();
-  }, [topic]);
+      } catch (e) {
+        const rawState = lastMessage.payload.toString().toUpperCase();
+        if (rawState === 'ON' || rawState === 'MARCHA') {
+          setIsOn(true);
+          switchStateStore[id] = true;
+          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
+        } else if (rawState === 'OFF' || rawState === 'PARADA') {
+          setIsOn(false);
+          switchStateStore[id] = false;
+          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
+        }
+      }
+    }
+  }, [lastMessage, topic, id]);
 
   const toggle = () => {
-    if (client) {
-      const cmd = isOn ? "PARADA" : "MARCHA";
-      client.publish(commandTopic, cmd);
-    }
+    const command = isOn ? "PARADA" : "MARCHA";
+    console.log(`[SwitchWidget] Click! Enviando: ${command} para ${commandTopic}`);
+    publishMessage(commandTopic, command);
   };
 
   return (

@@ -1,0 +1,658 @@
+[
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 1",
+      "port": "DI1",
+      "description": "MOTOR 1 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 2",
+      "port": "DI2",
+      "description": "MOTOR 2 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 3",
+      "port": "DI3",
+      "description": "MOTOR 3 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 4",
+      "port": "DI4",
+      "description": "MOTOR 4 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 5",
+      "port": "DI5",
+      "description": "MOTOR 5 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 6",
+      "port": "DI6",
+      "description": "MOTOR 6 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 7",
+      "port": "DI7",
+      "description": "MOTOR 7 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 8",
+      "port": "DI8",
+      "description": "MOTOR 8 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 9",
+      "port": "DI9",
+      "description": "MOTOR 9 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 10",
+      "port": "DI10",
+      "description": "MOTOR 10 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 11",
+      "port": "DI11",
+      "description": "MOTOR 11 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 12",
+      "port": "DI12",
+      "description": "MOTOR 12 funcionando"
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 13",
+      "port": "DI13",
+      "description": null
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 14",
+      "port": "DI14",
+      "description": null
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 15",
+      "port": "DI15",
+      "description": null
+    },
+    {
+      "block": "General",
+      "section": "ENTRADAS",
+      "id": "i 16",
+      "port": "DI16",
+      "description": null
+    },
+    {
+      "block": "General",
+      "section": "SALIDAS",
+      "id": "o 1",
+      "port": "DO1",
+      "description": "marcha MOTOR 1"
+    },
+    {
+      "block": "General",
+      "section": "SALIDAS",
+      "id": "o 2",
+      "port": "DO2",
+      "description": "parada MOTOR 1"
+    },
+    {
+      "block": "General",
+      "section": "SALIDAS",
+      "id": "o 3",
+      "port": "DO3",
+      "description": "marcha MOTOR 2"
+    },
+    {
+      "block": "General",
+      "section": "SALIDAS",
+      "id": "o 4",
+      "port": "DO4",
+      "description": "parada MOTOR 2"
+    },
+    {
+      "block": "General",
+      "section": "SALIDAS",
+      "id": "o 5",
+      "port": "DO5",
+      "description": "marcha MOTOR 3"
+    },
+    {
+      "block": "General",
+      "section": "SALIDAS",
+      "id": "o 6",
+      "port": "DO6",
+      "description": "parada MOTOR 3"
+    },
+    {
+      "block": "General",
+      "section": "SALIDAS",
+      "id": "o 7",
+      "port": "DO7",
+      "description": "marcha MOTOR 4"
+    },
+    {
+      "block": "General",
+      "section": "SALIDAS",
+      "id": "o 8",
+      "port": "DO8",
+      "description": "parada MOTOR 4"
+    },
+    {
+      "block": "General",
+      "section": "ANALOG",
+      "id": "an 1",
+      "port": "AI1",
+      "description": "CONSUMO 1"
+    },
+    {
+      "block": "General",
+      "section": "ANALOG",
+      "id": "an 2",
+      "port": "AI2",
+      "description": "CONSUMO 2"
+    },
+    {
+      "block": "General",
+      "section": "ANALOG",
+      "id": "an 3",
+      "port": "AI3",
+      "description": "CONSUMO 3"
+    },
+    {
+      "block": "General",
+      "section": "ANALOG",
+      "id": "an 4",
+      "port": "AI4",
+      "description": "CONSUMO 4"
+    },
+    {
+      "block": "General",
+      "section": "ANALOG",
+      "id": "an 5",
+      "port": "AI5",
+      "description": "CONSUMO 5"
+    },
+    {
+      "block": "General",
+      "section": "ANALOG",
+      "id": "an 6",
+      "port": "AI6",
+      "description": "CONSUMO 6"
+    },
+    {
+      "block": "General",
+      "section": "ANALOG",
+      "id": "an 7",
+      "port": "AI7",
+      "description": "CONSUMO 7"
+    },
+    {
+      "block": "General",
+      "section": "ANALOG",
+      "id": "an 8",
+      "port": "AI8",
+      "description": "CONSUMO 8"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 17",
+      "address": "10001",
+      "port": "DI1",
+      "description": "falla MOTOR 1",
+      "mb_ref": "MB-Dx1"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 18",
+      "address": "10002",
+      "port": "DI2",
+      "description": "falla MOTOR 2",
+      "mb_ref": "MB-Dx2"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 19",
+      "address": "10003",
+      "port": "DI3",
+      "description": "falla MOTOR 3",
+      "mb_ref": "MB-Dx3"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 20",
+      "address": "10004",
+      "port": "DI4",
+      "description": "falla MOTOR 4",
+      "mb_ref": "MB-Dx4"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 21",
+      "address": "10005",
+      "port": "DI5",
+      "description": "falla MOTOR 5",
+      "mb_ref": "MB-Dx5"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 22",
+      "address": "10006",
+      "port": "DI6",
+      "description": "falla MOTOR 6",
+      "mb_ref": "MB-Dx6"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 23",
+      "address": "10007",
+      "port": "DI7",
+      "description": "falla MOTOR 7",
+      "mb_ref": "MB-Dx7"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 24",
+      "address": "10008",
+      "port": "DI8",
+      "description": "falla MOTOR 8",
+      "mb_ref": "MB-Dx8"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 25",
+      "address": "10009",
+      "port": "DI9",
+      "description": null,
+      "mb_ref": "MB-Dx9"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 26",
+      "address": "10010",
+      "port": "DI10",
+      "description": null,
+      "mb_ref": "MB-Dx10"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 27",
+      "address": "10011",
+      "port": "DI11",
+      "description": null,
+      "mb_ref": "MB-Dx11"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 28",
+      "address": "10012",
+      "port": "DI12",
+      "description": null,
+      "mb_ref": "MB-Dx12"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 29",
+      "address": "10013",
+      "port": "DI13",
+      "description": null,
+      "mb_ref": "MB-Dx13"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 30",
+      "address": "10014",
+      "port": "DI14",
+      "description": null,
+      "mb_ref": "MB-Dx14"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 31",
+      "address": "10015",
+      "port": "DI15",
+      "description": null,
+      "mb_ref": "MB-Dx15"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "ENTRADAS",
+      "id": "i 32",
+      "address": "10016",
+      "port": "DI16",
+      "description": null,
+      "mb_ref": "MB-Dx16"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 9",
+      "address": "1",
+      "port": "DO1",
+      "description": "marcha MOTOR 5",
+      "mb_ref": "MB-Dx17"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 10",
+      "address": "2",
+      "port": "DO2",
+      "description": "parada MOTOR 5",
+      "mb_ref": "MB-Dx18"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 11",
+      "address": "3",
+      "port": "DO3",
+      "description": "marcha MOTOR 6",
+      "mb_ref": "MB-Dx19"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 12",
+      "address": "4",
+      "port": "DO4",
+      "description": "parada MOTOR 6",
+      "mb_ref": "MB-Dx20"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 13",
+      "address": "5",
+      "port": "DO5",
+      "description": "marcha MOTOR 7",
+      "mb_ref": "MB-Dx21"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 14",
+      "address": "6",
+      "port": "DO6",
+      "description": "parada MOTOR 7",
+      "mb_ref": "MB-Dx22"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 15",
+      "address": "7",
+      "port": "DO7",
+      "description": "marcha MOTOR 8",
+      "mb_ref": "MB-Dx23"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 16",
+      "address": "8",
+      "port": "DO8",
+      "description": "parada MOTOR 8",
+      "mb_ref": "MB-Dx24"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 17",
+      "address": "9",
+      "port": "DO9",
+      "description": "marcha MOTOR 9",
+      "mb_ref": "MB-Dx25"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 18",
+      "address": "10",
+      "port": "DO10",
+      "description": "parada MOTOR 9",
+      "mb_ref": "MB-Dx26"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 19",
+      "address": "11",
+      "port": "DO11",
+      "description": "marcha MOTOR 10",
+      "mb_ref": "MB-Dx27"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 20",
+      "address": "12",
+      "port": "DO12",
+      "description": "parada MOTOR 10",
+      "mb_ref": "MB-Dx28"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 21",
+      "address": "13",
+      "port": "DO13",
+      "description": "marcha MOTOR 11",
+      "mb_ref": "MB-Dx29"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 22",
+      "address": "14",
+      "port": "DO14",
+      "description": "parada MOTOR 11",
+      "mb_ref": "MB-Dx30"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 23",
+      "address": "15",
+      "port": "DO15",
+      "description": "marcha MOTOR 12",
+      "mb_ref": "MB-Dx31"
+    },
+    {
+      "block": "Digital_Exp_1",
+      "section": "SALIDAS",
+      "id": "o 24",
+      "address": "16",
+      "port": "DO16",
+      "description": "parada MOTOR 12",
+      "mb_ref": "MB-Dx32"
+    },
+    {
+      "block": "Analog_Exp_2",
+      "section": "ANALOG",
+      "id": "an 9",
+      "address": "40001",
+      "port": "A1",
+      "connection": "TRAFO 3 VR",
+      "mb_ref": "MB-Ax33"
+    },
+    {
+      "block": "Analog_Exp_2",
+      "section": "ANALOG",
+      "id": "an 10",
+      "address": "40002",
+      "port": "A2",
+      "connection": "TRAFO 3 VS",
+      "mb_ref": "MB-Ax34"
+    },
+    {
+      "block": "Analog_Exp_2",
+      "section": "ANALOG",
+      "id": "an 11",
+      "address": "40003",
+      "port": "A3",
+      "connection": "TRAFO 3 VT",
+      "mb_ref": "MB-Ax35"
+    },
+    {
+      "block": "Analog_Exp_2",
+      "section": "ANALOG",
+      "id": "an 12",
+      "address": "40004",
+      "port": "A4",
+      "connection": "TRAFO 4 VR",
+      "mb_ref": "MB-Ax36"
+    },
+    {
+      "block": "Analog_Exp_2",
+      "section": "ANALOG",
+      "id": "an 13",
+      "address": "40005",
+      "port": "A5",
+      "connection": "TRAFO 4 VS",
+      "mb_ref": "MB-Ax37"
+    },
+    {
+      "block": "Analog_Exp_2",
+      "section": "ANALOG",
+      "id": "an 14",
+      "address": "40006",
+      "port": "A6",
+      "connection": "TRAFO 4 VT",
+      "mb_ref": "MB-Ax38"
+    },
+    {
+      "block": "Analog_Exp_2",
+      "section": "ANALOG",
+      "id": "an 15",
+      "address": "40007",
+      "port": "A7",
+      "connection": "M3 CORR",
+      "mb_ref": "MB-Ax39"
+    },
+    {
+      "block": "Analog_Exp_2",
+      "section": "ANALOG",
+      "id": "an 16",
+      "address": "40008",
+      "port": "A8",
+      "connection": "M4 CORR",
+      "mb_ref": "MB-Ax40"
+    },
+    {
+      "block": "Analog_Exp_3",
+      "section": "ANALOG",
+      "id": "an 17",
+      "address": "40001",
+      "port": "A1",
+      "connection": "M5 CORR",
+      "mb_ref": "MB-Ax41"
+    },
+    {
+      "block": "Analog_Exp_3",
+      "section": "ANALOG",
+      "id": "an 18",
+      "address": "40002",
+      "port": "A2",
+      "connection": "M6 CORR",
+      "mb_ref": "MB-Ax42"
+    },
+    {
+      "block": "Analog_Exp_3",
+      "section": "ANALOG",
+      "id": "an 19",
+      "address": "40003",
+      "port": "A3",
+      "connection": "M 7 CORR",
+      "mb_ref": "MB-Ax43"
+    },
+    {
+      "block": "Analog_Exp_3",
+      "section": "ANALOG",
+      "id": "an 20",
+      "address": "40004",
+      "port": "A4",
+      "connection": "M 8 CORR",
+      "mb_ref": "MB-Ax44"
+    },
+    {
+      "block": "Analog_Exp_3",
+      "section": "ANALOG",
+      "id": "an 21",
+      "address": "40005",
+      "port": "A5",
+      "connection": "M9 CORR",
+      "mb_ref": "MB-Ax45"
+    },
+    {
+      "block": "Analog_Exp_3",
+      "section": "ANALOG",
+      "id": "an 22",
+      "address": "40006",
+      "port": "A6",
+      "connection": "CONSUMO 10",
+      "mb_ref": "MB-Ax46"
+    },
+    {
+      "block": "Analog_Exp_3",
+      "section": "ANALOG",
+      "id": "an 23",
+      "address": "40007",
+      "port": "A7",
+      "connection": "CONSUMO 11",
+      "mb_ref": "MB-Ax47"
+    },
+    {
+      "block": "Analog_Exp_3",
+      "section": "ANALOG",
+      "id": "an 24",
+      "address": "40008",
+      "port": "A8",
+      "connection": "CONSUMO 12",
+      "mb_ref": "MB-Ax48"
+    }
+  ]

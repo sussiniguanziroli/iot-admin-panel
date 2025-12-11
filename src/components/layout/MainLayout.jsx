@@ -1,23 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, LayoutDashboard, BarChart2, Users, Edit3, Check, Wifi, WifiOff, Settings, Download, Upload, FileJson } from 'lucide-react';
+import { Menu, X, LayoutDashboard, BarChart2, Users, Edit3, Check, Wifi, WifiOff, Settings, Download, Upload } from 'lucide-react';
 import { useDashboard } from '../../context/DashboardContext';
-import mqtt from 'mqtt';
+import { useMqtt } from '../../context/MqttContext'; // ✅ USE GLOBAL MQTT CONTEXT
 
 const MainLayout = ({ children, activeTab, setActiveTab }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Menu desplegable
-  const fileInputRef = useRef(null); // Referencia al input oculto
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const fileInputRef = useRef(null);
 
   const { isEditMode, toggleEditMode, machines, widgets, loadProfile } = useDashboard();
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
-    const client = mqtt.connect('ws://localhost:9001', { reconnectPeriod: 5000 });
-    client.on('connect', () => setIsConnected(true));
-    client.on('offline', () => setIsConnected(false));
-    client.on('close', () => setIsConnected(false));
-    return () => client.end();
-  }, []);
+  
+  // ✅ FIX: Use global MQTT context instead of creating new connection
+  const { isConnected } = useMqtt();
 
   // --- LOGICA DE EXPORTACION ---
   const handleExport = () => {
@@ -28,7 +22,6 @@ const MainLayout = ({ children, activeTab, setActiveTab }) => {
       widgets: widgets
     };
     
-    // Crear el archivo blob y descargarlo
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -42,7 +35,7 @@ const MainLayout = ({ children, activeTab, setActiveTab }) => {
 
   // --- LOGICA DE IMPORTACION ---
   const handleImportClick = () => {
-    fileInputRef.current.click(); // Disparar el input oculto
+    fileInputRef.current.click();
   };
 
   const handleFileChange = (e) => {
@@ -53,14 +46,14 @@ const MainLayout = ({ children, activeTab, setActiveTab }) => {
     reader.onload = (event) => {
       try {
         const parsedData = JSON.parse(event.target.result);
-        loadProfile(parsedData); // Llamamos al contexto
+        loadProfile(parsedData);
         setIsSettingsOpen(false);
       } catch (err) {
         alert("El archivo no es un JSON válido");
       }
     };
     reader.readAsText(file);
-    e.target.value = null; // Resetear input
+    e.target.value = null;
   };
 
   const menuItems = [
@@ -107,7 +100,7 @@ const MainLayout = ({ children, activeTab, setActiveTab }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* STATUS */}
+            {/* ✅ STATUS - NOW WORKS CORRECTLY */}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${isConnected ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>
               {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
               <span className="hidden sm:inline">{isConnected ? 'ONLINE' : 'DESCONECTADO'}</span>
@@ -121,7 +114,7 @@ const MainLayout = ({ children, activeTab, setActiveTab }) => {
               </button>
             )}
             
-            {/* --- MENU CONFIGURACIÓN (DROPDOWN) --- */}
+            {/* MENU CONFIGURACIÓN */}
             <div className="relative">
               <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -130,7 +123,6 @@ const MainLayout = ({ children, activeTab, setActiveTab }) => {
                 <Settings size={20} />
               </button>
 
-              {/* DROPDOWN MENU */}
               {isSettingsOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
                   <div className="px-4 py-3 border-b border-slate-50 bg-slate-50/50">
@@ -147,7 +139,6 @@ const MainLayout = ({ children, activeTab, setActiveTab }) => {
                       <Upload size={16} /> Importar Perfil JSON
                     </button>
                     
-                    {/* Input oculto para cargar archivo */}
                     <input 
                       type="file" 
                       ref={fileInputRef} 
@@ -159,7 +150,6 @@ const MainLayout = ({ children, activeTab, setActiveTab }) => {
                 </div>
               )}
             </div>
-            
           </div>
         </header>
 
@@ -167,7 +157,6 @@ const MainLayout = ({ children, activeTab, setActiveTab }) => {
           {children}
         </main>
 
-        {/* Backdrop transparente para cerrar el dropdown si clickeas afuera */}
         {isSettingsOpen && <div className="fixed inset-0 z-30" onClick={() => setIsSettingsOpen(false)} />}
       </div>
       

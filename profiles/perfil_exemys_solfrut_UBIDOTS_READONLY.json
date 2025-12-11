@@ -1,0 +1,226 @@
+{
+    "version": "1.4-UBIDOTS-READONLY",
+    "timestamp": "2025-12-11",
+    "project": "SolFrut - Estación de Bombeo (UBIDOTS FORMAT)",
+    "description": "⚠️ PERFIL SEGURO - Compatible con formato Ubidots /v1.6/devices/den1 - Solo monitoreo",
+    
+    "machines": [
+      {
+        "id": "motor_4",
+        "name": "Motor 4"
+      },
+      {
+        "id": "motor_5",
+        "name": "Motor 5"
+      },
+      {
+        "id": "motor_6",
+        "name": "Motor 6"
+      },
+      {
+        "id": "general",
+        "name": "Estado General"
+      }
+    ],
+    
+    "widgets": [
+      
+      {
+        "id": "m4_gauge_ubi",
+        "machineId": "motor_4",
+        "type": "gauge",
+        "title": "Corriente Motor 4 (AI4)",
+        "topic": "/v1.6/devices/den1/ai4",
+        "dataKey": "value",
+        "min": 0,
+        "max": 40,
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m4_estado_ubi",
+        "machineId": "motor_4",
+        "type": "metric",
+        "title": "Estado Operativo (DI4)",
+        "topic": "/v1.6/devices/den1/di4",
+        "dataKey": "value",
+        "unit": "",
+        "color": "blue",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m4_chart_ubi",
+        "machineId": "motor_4",
+        "type": "chart",
+        "title": "Curva de Carga Motor 4",
+        "topic": "/v1.6/devices/den1/ai4",
+        "dataKey": "value",
+        "color": "#3b82f6",
+        "min": 0,
+        "max": 40,
+        "width": "full",
+        "height": "lg"
+      },
+      
+      {
+        "id": "m5_gauge_ubi",
+        "machineId": "motor_5",
+        "type": "gauge",
+        "title": "Corriente Motor 5 (AI5)",
+        "topic": "/v1.6/devices/den1/ai5",
+        "dataKey": "value",
+        "min": 0,
+        "max": 40,
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m5_estado_ubi",
+        "machineId": "motor_5",
+        "type": "metric",
+        "title": "Estado Operativo (DI5)",
+        "topic": "/v1.6/devices/den1/di5",
+        "dataKey": "value",
+        "unit": "",
+        "color": "green",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m5_chart_ubi",
+        "machineId": "motor_5",
+        "type": "chart",
+        "title": "Curva de Carga Motor 5",
+        "topic": "/v1.6/devices/den1/ai5",
+        "dataKey": "value",
+        "color": "#10b981",
+        "min": 0,
+        "max": 40,
+        "width": "full",
+        "height": "lg"
+      },
+      
+      {
+        "id": "m6_gauge_ubi",
+        "machineId": "motor_6",
+        "type": "gauge",
+        "title": "Corriente Motor 6 (AI6)",
+        "topic": "/v1.6/devices/den1/ai6",
+        "dataKey": "value",
+        "min": 0,
+        "max": 50,
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m6_estado_ubi",
+        "machineId": "motor_6",
+        "type": "metric",
+        "title": "Estado Operativo (DI6)",
+        "topic": "/v1.6/devices/den1/di6",
+        "dataKey": "value",
+        "unit": "",
+        "color": "orange",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m6_chart_ubi",
+        "machineId": "motor_6",
+        "type": "chart",
+        "title": "Curva de Carga Motor 6",
+        "topic": "/v1.6/devices/den1/ai6",
+        "dataKey": "value",
+        "color": "#f59e0b",
+        "min": 0,
+        "max": 50,
+        "width": "full",
+        "height": "lg"
+      },
+      
+      {
+        "id": "di1_estado",
+        "machineId": "general",
+        "type": "metric",
+        "title": "Motor 1 (DI1)",
+        "topic": "/v1.6/devices/den1/di1",
+        "dataKey": "value",
+        "unit": "",
+        "color": "blue",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "sm"
+      },
+      {
+        "id": "di2_estado",
+        "machineId": "general",
+        "type": "metric",
+        "title": "Motor 2 (DI2)",
+        "topic": "/v1.6/devices/den1/di2",
+        "dataKey": "value",
+        "unit": "",
+        "color": "blue",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "sm"
+      },
+      {
+        "id": "di3_estado",
+        "machineId": "general",
+        "type": "metric",
+        "title": "Motor 3 (DI3)",
+        "topic": "/v1.6/devices/den1/di3",
+        "dataKey": "value",
+        "unit": "",
+        "color": "blue",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "sm"
+      },
+      {
+        "id": "di7_estado",
+        "machineId": "general",
+        "type": "metric",
+        "title": "Motor 7 (DI7)",
+        "topic": "/v1.6/devices/den1/di7",
+        "dataKey": "value",
+        "unit": "",
+        "color": "blue",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "sm"
+      }
+    ],
+    
+    "mqtt_config": {
+      "broker": "d117b2b403d34e1cbc27488bb7782e37.s1.eu.hivemq.cloud",
+      "port": 8884,
+      "protocol": "wss",
+      "username": "sussiniguanziroli",
+      "note": "⚠️ MODO SEGURO - Compatible con Ubidots format - Solo monitoreo"
+    },
+    
+    "ubidots_mapping": {
+      "note": "Este perfil usa el formato Ubidots /v1.6/devices/den1",
+      "topic_structure": "/v1.6/devices/{device_id}/{variable_id}",
+      "device_id": "den1",
+      "payload_format": {
+        "digital": "^%n*%i^%v",
+        "analog": "Ubidots format with 'value' key"
+      },
+      "channel_mapping": {
+        "AI4": "Motor 4 - Corriente",
+        "AI5": "Motor 5 - Corriente", 
+        "AI6": "Motor 6 - Corriente",
+        "DI4": "Motor 4 - Estado",
+        "DI5": "Motor 5 - Estado",
+        "DI6": "Motor 6 - Estado"
+      }
+    },
+    
+    "safety_note": "⚠️ Este perfil NO incluye widgets de control. Solo monitoreo de variables Ubidots."
+  }

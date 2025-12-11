@@ -1,0 +1,246 @@
+{
+    "version": "1.2",
+    "timestamp": "2025-12-11",
+    "project": "SolFrut - Estación de Bombeo (Multi-Tab)",
+    "description": "Perfil con tabs separados: Motor 4, Motor 5, Motor 6, y Reconectador - TODOS CONTROLABLES",
+    
+    "machines": [
+      {
+        "id": "motor_4",
+        "name": "Motor 4"
+      },
+      {
+        "id": "motor_5",
+        "name": "Motor 5"
+      },
+      {
+        "id": "motor_6",
+        "name": "Motor 6"
+      },
+      {
+        "id": "reconectador",
+        "name": "Reconectador 101"
+      }
+    ],
+    
+    "widgets": [
+      
+      {
+        "id": "m4_switch",
+        "machineId": "motor_4",
+        "type": "switch",
+        "title": "Control Manual Motor 4",
+        "topic": "solfrut/motores/m4/telemetria",
+        "commandTopic": "solfrut/motores/m4/comandos",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m4_gauge",
+        "machineId": "motor_4",
+        "type": "gauge",
+        "title": "Corriente Motor 4",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "corriente",
+        "min": 0,
+        "max": 40,
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m4_estado",
+        "machineId": "motor_4",
+        "type": "metric",
+        "title": "Estado Operativo",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "estado",
+        "unit": "",
+        "color": "blue",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m4_falla",
+        "machineId": "motor_4",
+        "type": "metric",
+        "title": "Indicador de Falla",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "falla",
+        "unit": "",
+        "color": "red",
+        "iconKey": "zap",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m4_chart",
+        "machineId": "motor_4",
+        "type": "chart",
+        "title": "Curva de Carga en Tiempo Real",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "corriente",
+        "color": "#3b82f6",
+        "min": 0,
+        "max": 40,
+        "width": "full",
+        "height": "lg"
+      },
+      
+      {
+        "id": "m5_switch",
+        "machineId": "motor_5",
+        "type": "switch",
+        "title": "Control Manual Motor 5",
+        "topic": "solfrut/motores/m5/telemetria",
+        "commandTopic": "solfrut/motores/m5/comandos",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m5_gauge",
+        "machineId": "motor_5",
+        "type": "gauge",
+        "title": "Corriente Motor 5",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "corriente",
+        "min": 0,
+        "max": 40,
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m5_estado",
+        "machineId": "motor_5",
+        "type": "metric",
+        "title": "Estado Operativo",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "estado",
+        "unit": "",
+        "color": "green",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m5_falla",
+        "machineId": "motor_5",
+        "type": "metric",
+        "title": "Indicador de Falla",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "falla",
+        "unit": "",
+        "color": "red",
+        "iconKey": "zap",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m5_chart",
+        "machineId": "motor_5",
+        "type": "chart",
+        "title": "Curva de Carga en Tiempo Real",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "corriente",
+        "color": "#10b981",
+        "min": 0,
+        "max": 40,
+        "width": "full",
+        "height": "lg"
+      },
+      
+      {
+        "id": "m6_switch",
+        "machineId": "motor_6",
+        "type": "switch",
+        "title": "Control Manual Motor 6",
+        "topic": "solfrut/motores/m6/telemetria",
+        "commandTopic": "solfrut/motores/m6/comandos",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m6_gauge",
+        "machineId": "motor_6",
+        "type": "gauge",
+        "title": "Corriente Motor 6",
+        "topic": "solfrut/motores/m6/telemetria",
+        "dataKey": "corriente",
+        "min": 0,
+        "max": 50,
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m6_estado",
+        "machineId": "motor_6",
+        "type": "metric",
+        "title": "Estado Operativo",
+        "topic": "solfrut/motores/m6/telemetria",
+        "dataKey": "estado",
+        "unit": "",
+        "color": "orange",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m6_falla",
+        "machineId": "motor_6",
+        "type": "metric",
+        "title": "Indicador de Falla",
+        "topic": "solfrut/motores/m6/telemetria",
+        "dataKey": "falla",
+        "unit": "",
+        "color": "red",
+        "iconKey": "zap",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "m6_chart",
+        "machineId": "motor_6",
+        "type": "chart",
+        "title": "Curva de Carga en Tiempo Real",
+        "topic": "solfrut/motores/m6/telemetria",
+        "dataKey": "corriente",
+        "color": "#f59e0b",
+        "min": 0,
+        "max": 50,
+        "width": "full",
+        "height": "lg"
+      },
+      
+      {
+        "id": "reco_switch",
+        "machineId": "reconectador",
+        "type": "switch",
+        "title": "Interruptor General",
+        "topic": "solfrut/reco1/estado",
+        "commandTopic": "solfrut/reco1/comandos",
+        "width": "half",
+        "height": "md"
+      },
+      {
+        "id": "reco_estado",
+        "machineId": "reconectador",
+        "type": "metric",
+        "title": "Estado Reconectador",
+        "topic": "solfrut/reco1/estado",
+        "dataKey": "estado",
+        "unit": "",
+        "color": "purple",
+        "iconKey": "activity",
+        "width": "half",
+        "height": "md"
+      }
+    ],
+    
+    "mqtt_config": {
+      "broker": "d117b2b403d34e1cbc27488bb7782e37.s1.eu.hivemq.cloud",
+      "port": 8884,
+      "protocol": "wss",
+      "username": "sussiniguanziroli",
+      "note": "Configuración para HiveMQ Cloud con WebSocket Secure"
+    }
+  }

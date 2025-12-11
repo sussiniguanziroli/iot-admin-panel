@@ -1,38 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import mqtt from 'mqtt';
+import React, { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity } from 'lucide-react'; // Icono de Gráfico
+import { Activity } from 'lucide-react';
 import BaseWidget from './BaseWidget';
+import { useMqtt } from '../context/MqttContext';
 
 const HEIGHT_MAP = { sm: 'h-40', md: 'h-64', lg: 'h-96', xl: 'h-[500px]' };
+const chartDataStore = {};
 
 const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'md', min, max }) => {
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(() => chartDataStore[id] || []);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const hasSubscribed = useRef(false);
+  
+  const { subscribeToTopic, lastMessage } = useMqtt();
 
   useEffect(() => {
-    const client = mqtt.connect('ws://localhost:9001');
-    client.on('connect', () => client.subscribe(topic));
-    
-    client.on('message', (t, msg) => {
+    if (!hasSubscribed.current) {
+      subscribeToTopic(topic);
+      hasSubscribed.current = true;
+    }
+  }, [topic, subscribeToTopic]);
+
+  useEffect(() => {
+    if (lastMessage && lastMessage.topic === topic) {
       try {
-        const payload = JSON.parse(msg.toString());
-        const val = payload[dataKey];
+        const payload = JSON.parse(lastMessage.payload);
         const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        // ✅ Handle both formats
+        let val;
+        
+        if (payload[dataKey] !== undefined) {
+          val = payload[dataKey];
+        } else if (payload.value !== undefined) {
+          val = payload.value;
+        }
 
         if (val !== undefined) {
           setLastUpdated(new Date().toLocaleTimeString());
+          
           setHistory(prev => {
-            const nuevo = [...prev, { time: timeStr, value: Number(val) }];
             const limit = height === 'lg' || height === 'xl' ? 100 : 50;
-            return nuevo.length > limit ? nuevo.slice(1) : nuevo;
+            const newHistory = [...prev, { time: timeStr, value: Number(val) }];
+            const trimmedHistory = newHistory.length > limit ? newHistory.slice(-limit) : newHistory;
+            chartDataStore[id] = trimmedHistory;
+            return trimmedHistory;
           });
         }
-      } catch (e) {}
-    });
-
-    return () => client.end();
-  }, [topic, dataKey, height]);
+      } catch (e) {
+        console.error('Error parsing in ChartWidget:', e);
+      }
+    }
+  }, [lastMessage, topic, dataKey, height, id]);
 
   const yDomain = [
     min !== undefined && min !== '' ? Number(min) : 'auto', 
