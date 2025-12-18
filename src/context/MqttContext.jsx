@@ -1,104 +1,111 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import mqtt from 'mqtt';
 
 const MqttContext = createContext();
 
-// --- CONFIGURAÇÃO HIVEMQ CLOUD ---
-const MQTT_CONFIG = {
-  host: 'd117b2b403d34e1cbc27488bb7782e37.s1.eu.hivemq.cloud', 
-  port: 8884,
-  protocol: 'wss',
-  username: 'sussiniguanziroli', 
-  password: 'SolFrut2025', 
-};
-
 export const MqttProvider = ({ children }) => {
   const [client, setClient] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected'); // disconnected, connecting, connected, error
   const [lastMessage, setLastMessage] = useState(null);
+  const [config, setConfig] = useState(null);
 
+  // Cargar configuración guardada al inicio
   useEffect(() => {
-    console.log('Iniciando conexão ao HiveMQ Cloud...');
-    
-    // Construção correta da URL para HiveMQ Cloud
-    const url = `${MQTT_CONFIG.protocol}://${MQTT_CONFIG.host}:${MQTT_CONFIG.port}/mqtt`;
+    const savedConfig = localStorage.getItem('mqtt_config');
+    if (savedConfig) {
+      setConfig(JSON.parse(savedConfig));
+    }
+  }, []);
+
+  // Función para conectar (llamada desde el Modal o al inicio)
+  const connect = useCallback((mqttConfig) => {
+    if (!mqttConfig) return;
+
+    setConnectionStatus('connecting');
+    console.log('Intentando conectar a MQTT:', mqttConfig.host);
+
+    const url = `${mqttConfig.protocol}://${mqttConfig.host}:${mqttConfig.port}/mqtt`;
     
     const options = {
-      username: MQTT_CONFIG.username,
-      password: MQTT_CONFIG.password,
-      clientId: `react_dash_${Math.random().toString(16).substring(2, 8)}`,
+      username: mqttConfig.username,
+      password: mqttConfig.password,
+      clientId: `solfrut_dash_${Math.random().toString(16).substring(2, 8)}`,
       keepalive: 60,
       clean: true,
       reconnectPeriod: 5000,
-      connectTimeout: 30 * 1000,
-      rejectUnauthorized: false, 
     };
 
-    console.log(`Conectando a: ${url}`);
-    
+    // Si ya existía un cliente, lo cerramos antes
+    if (client) client.end();
+
     const mqttClient = mqtt.connect(url, options);
 
     mqttClient.on('connect', () => {
-      console.log('✅ Conectado ao HiveMQ Cloud');
-      setIsConnected(true);
+      console.log('✅ Conectado al Broker');
+      setConnectionStatus('connected');
+      // Guardar configuración exitosa
+      localStorage.setItem('mqtt_config', JSON.stringify(mqttConfig));
+      setConfig(mqttConfig);
     });
 
     mqttClient.on('error', (err) => {
-      console.error('❌ Erro MQTT:', err);
-      setIsConnected(false);
-    });
-
-    mqttClient.on('close', () => {
-      console.log('⚠️ Conexão fechada (tentando reconectar...)');
-      setIsConnected(false);
+      console.error('❌ Error MQTT:', err);
+      setConnectionStatus('error');
     });
 
     mqttClient.on('offline', () => {
-      console.log('🔌 Cliente offline');
-      setIsConnected(false);
+      setConnectionStatus('disconnected');
     });
 
-    // Escuta global de mensagens
     mqttClient.on('message', (topic, message) => {
       setLastMessage({ topic, payload: message.toString(), timestamp: new Date() });
     });
 
     setClient(mqttClient);
+  }, [client]); // ✅ CORRECCIÓN: Agregamos 'client' a las dependencias
 
-    return () => {
-      if (mqttClient) {
-        console.log('Desconectando cliente...');
-        mqttClient.end();
-      }
-    };
-  }, []);
-
-  // Função auxiliar para se inscrever a partir de componentes
-  const subscribeToTopic = (topic) => {
-    if (client && client.connected) {
-      client.subscribe(topic, (err) => {
-        if (!err) console.log(`Inscrito em: ${topic}`);
-        else console.error(`Erro ao se inscrever em ${topic}:`, err);
-      });
-    } else {
-        console.warn(`Não foi possível se inscrever em ${topic}: Cliente desconectado`);
+  const disconnect = () => {
+    if (client) {
+      client.end();
+      setClient(null);
+      setConnectionStatus('disconnected');
+      localStorage.removeItem('mqtt_config');
+      setConfig(null);
     }
   };
 
-  // Função auxiliar para publicar (COM LOGS DE DEBUG)
-  const publishMessage = (topic, message) => {
-    if (client && client.connected) {
-      console.log(`[MQTT OUT] Publicando em [${topic}]: ${message}`);
-      client.publish(topic, message, (err) => {
-        if (err) console.error("Erro ao publicar:", err);
+  // Auto-conectar si hay config guardada
+  useEffect(() => {
+    if (config && !client) {
+      connect(config);
+    }
+  }, [config, connect, client]); // Agregué client por seguridad
+
+  const subscribeToTopic = (topic) => {
+    if (client?.connected) {
+      client.subscribe(topic, (err) => {
+        if (err) console.error(`Error suscribiendo a ${topic}:`, err);
       });
-    } else {
-        console.warn(`Não foi possível publicar em ${topic}: Cliente desconectado`);
+    }
+  };
+
+  const publishMessage = (topic, message) => {
+    if (client?.connected) {
+      client.publish(topic, message);
     }
   };
 
   return (
-    <MqttContext.Provider value={{ client, isConnected, lastMessage, subscribeToTopic, publishMessage }}>
+    <MqttContext.Provider value={{ 
+      client, 
+      connectionStatus, 
+      lastMessage, 
+      subscribeToTopic, 
+      publishMessage,
+      connect,      
+      disconnect,   
+      config        
+    }}>
       {children}
     </MqttContext.Provider>
   );
