@@ -1,6 +1,6 @@
 [build]
   command = "npm run build"
-  publish = "build"
+  publish = "dist"
 
 [[redirects]]
   from = "/*"
@@ -9,7 +9,3 @@
 
 [build.environment]
   SECRETS_SCAN_ENABLED = "false"
-
-[build]
-  command = "npm run build"
-  publish = "dist"
