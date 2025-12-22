@@ -1,197 +1,294 @@
-import React, { useState } from 'react';
-import { Plus, Search, MoreVertical, Shield, User, Eye, Trash2, Edit2, CheckCircle, XCircle, Mail } from 'lucide-react';
-
-// Datos simulados iniciales (Mock Data)
-const MOCK_USERS = [
-  { id: 1, name: 'Patricio Sussini', email: 'admin@solfrut.com', role: 'admin', status: 'active', lastLogin: 'Hace 2 min' },
-  { id: 2, name: 'Operador Planta 1', email: 'operador1@solfrut.com', role: 'operador', status: 'active', lastLogin: 'Hace 4 horas' },
-  { id: 3, name: 'Gerente Visualizador', email: 'gerencia@solfrut.com', role: 'visualizador', status: 'active', lastLogin: 'Ayer' },
-  { id: 4, name: 'Empleado Ex', email: 'baja@solfrut.com', role: 'operador', status: 'inactive', lastLogin: 'Hace 20 días' },
-];
+import React, { useState, useEffect } from 'react';
+import { 
+  collection, 
+  getDocs, 
+  setDoc, 
+  doc, 
+  deleteDoc, 
+  query, 
+  where 
+} from 'firebase/firestore';
+import { 
+  Users, 
+  UserPlus, 
+  Trash2, 
+  Shield, 
+  ShieldAlert, 
+  Search, 
+  Mail, 
+  Building2 
+} from 'lucide-react';
+import { db } from '../firebase/config';
+import { useAuth } from '../context/AuthContext';
 
 const UsersManagement = () => {
-  const [users, setUsers] = useState(MOCK_USERS);
-  const [searchTerm, setSearchTerm] = useState('');
+  const { userProfile } = useAuth();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'operador' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    role: 'operator', // operator, viewer, admin
+    tenantId: userProfile?.tenantId || 'sol-frut-srl',
+    uid: '' // We will manually input this or generate it
+  });
 
-  // Filtrado simple
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Fetch Users
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        let q;
+        // BIG BROTHER LOGIC:
+        if (userProfile?.role === 'super_admin') {
+          // You see EVERYONE
+          q = collection(db, "users");
+        } else {
+          // Regular Admins only see their own staff
+          q = query(collection(db, "users"), where("tenantId", "==", userProfile?.tenantId));
+        }
 
-  const handleDelete = (id) => {
-    if (confirm('¿Seguro que deseas eliminar este usuario?')) {
-      setUsers(users.filter(u => u.id !== id));
+        const querySnapshot = await getDocs(q);
+        const usersList = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setUsers(usersList);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (userProfile) fetchUsers();
+  }, [userProfile]);
+
+  const handleDelete = async (userId) => {
+    if (!window.confirm("Are you sure you want to remove this user's access profile?")) return;
+    try {
+      await deleteDoc(doc(db, "users", userId));
+      setUsers(users.filter(u => u.id !== userId));
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert("Failed to delete user profile");
     }
   };
 
-  const handleAddUser = (e) => {
+  const handleCreateProfile = async (e) => {
     e.preventDefault();
-    const id = Date.now();
-    setUsers([...users, { ...newUser, id, status: 'active', lastLogin: 'Nunca' }]);
-    setIsModalOpen(false);
-    setNewUser({ name: '', email: '', role: 'operador' });
+    // For this prototype, we use the email as ID if UID is empty, 
+    // strictly to create the Database Profile. 
+    // ideally you copy the UID from the Auth Console.
+    const docId = formData.uid || formData.email; 
+
+    try {
+      await setDoc(doc(db, "users", docId), {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        tenantId: formData.tenantId,
+        createdAt: new Date().toISOString()
+      });
+
+      setUsers([...users, { id: docId, ...formData }]);
+      setIsModalOpen(false);
+      setFormData({ name: '', email: '', role: 'operator', tenantId: userProfile?.tenantId, uid: '' });
+      alert("✅ User Profile Created! (Remember to create the Auth credential in Firebase Console)");
+    } catch (error) {
+      console.error("Error creating profile:", error);
+      alert("Error creating profile");
+    }
   };
 
-  // Componente de Badge para Roles
-  const RoleBadge = ({ role }) => {
-    const styles = {
-      admin: 'bg-purple-100 text-purple-700 border-purple-200',
-      operador: 'bg-blue-100 text-blue-700 border-blue-200',
-      visualizador: 'bg-slate-100 text-slate-600 border-slate-200'
-    };
-    
-    const icons = {
-      admin: <Shield size={12} className="mr-1" />,
-      operador: <User size={12} className="mr-1" />,
-      visualizador: <Eye size={12} className="mr-1" />
-    };
-
-    return (
-      <span className={`flex items-center w-fit px-2.5 py-0.5 rounded-full text-xs font-bold border capitalize ${styles[role] || styles.visualizador}`}>
-        {icons[role]} {role}
-      </span>
-    );
-  };
+  if (loading) return <div className="p-8 text-center text-slate-500">Loading Users Directory...</div>;
 
   return (
     <div className="max-w-6xl mx-auto">
-      
-      {/* Header de la Sección */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Gestión de Usuarios</h1>
-          <p className="text-sm text-slate-500">Administra el acceso y roles del personal de planta.</p>
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Users className="text-blue-600" />
+            User Management
+          </h1>
+          <p className="text-slate-500">
+            {userProfile?.role === 'super_admin' 
+              ? "Global Access Control (God Mode)" 
+              : "Manage your team access"}
+          </p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold shadow-lg shadow-blue-200 transition-all"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors shadow-sm"
         >
-          <Plus size={18} /> Nuevo Usuario
+          <UserPlus size={18} />
+          Add New User
         </button>
       </div>
 
-      {/* Barra de Búsqueda y Filtros */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex items-center gap-3">
-        <Search className="text-slate-400" size={20} />
-        <input 
-          type="text" 
-          placeholder="Buscar por nombre o email..." 
-          className="flex-1 outline-none text-sm text-slate-700 placeholder:text-slate-400"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      {/* Tabla de Usuarios */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-bold tracking-wider">
-              <th className="p-4">Usuario</th>
-              <th className="p-4">Rol</th>
-              <th className="p-4">Estado</th>
-              <th className="p-4">Último Acceso</th>
-              <th className="p-4 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold border border-slate-200">
-                      {user.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-700 text-sm">{user.name}</p>
-                      <p className="text-xs text-slate-400 flex items-center gap-1">
-                        <Mail size={10} /> {user.email}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4">
-                  <RoleBadge role={user.role} />
-                </td>
-                <td className="p-4">
-                  {user.status === 'active' ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md text-xs font-bold border border-emerald-100">
-                      <CheckCircle size={12} /> Activo
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-slate-500 bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">
-                      <XCircle size={12} /> Inactivo
-                    </span>
-                  )}
-                </td>
-                <td className="p-4 text-sm text-slate-500">
-                  {user.lastLogin}
-                </td>
-                <td className="p-4 text-right">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(user.id)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="bg-slate-50 border-b border-slate-200 font-semibold text-slate-900 uppercase tracking-wider">
+              <tr>
+                <th className="px-6 py-4">User</th>
+                <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Tenant (Organization)</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {filteredUsers.length === 0 && (
-          <div className="p-8 text-center text-slate-400">
-            No se encontraron usuarios que coincidan con la búsqueda.
-          </div>
-        )}
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {users.map((u) => (
+                <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-lg">
+                        {u.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-medium text-slate-900">{u.name}</div>
+                        <div className="text-slate-400 text-xs flex items-center gap-1">
+                          <Mail size={12} /> {u.email}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
+                      ${u.role === 'super_admin' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                        u.role === 'admin' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                        'bg-slate-100 text-slate-800 border-slate-200'
+                      }`}>
+                      {u.role === 'super_admin' && <ShieldAlert size={12} className="mr-1" />}
+                      {u.role === 'admin' && <Shield size={12} className="mr-1" />}
+                      {u.role.replace('_', ' ').toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Building2 size={16} className="text-slate-400" />
+                      {u.tenantId}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button 
+                      onClick={() => handleDelete(u.id)}
+                      className="text-slate-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-lg"
+                      title="Revoke Access"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan="4" className="px-6 py-12 text-center text-slate-400">
+                    No users found in directory.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Modal Agregar Usuario Simple */}
+      {/* CREATE USER MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in-95">
-            <h2 className="text-xl font-bold mb-4">Nuevo Usuario</h2>
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nombre Completo</label>
-                <input required type="text" className="w-full px-3 py-2 border rounded-lg" 
-                  value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-slate-800">Grant Access (Create Profile)</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                &times;
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateProfile} className="p-6 space-y-4">
+              <div className="p-3 bg-yellow-50 text-yellow-800 text-xs rounded border border-yellow-200">
+                <strong>Note:</strong> This creates the database profile. You must also create the email/password in the Firebase Auth Console with the same Email/UID.
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email Corporativo</label>
-                <input required type="email" className="w-full px-3 py-2 border rounded-lg" 
-                  value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                <input 
+                  type="text" 
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.name}
+                  onChange={e => setFormData({...formData, name: e.target.value})}
+                />
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Rol de Acceso</label>
-                <select className="w-full px-3 py-2 border rounded-lg bg-white"
-                  value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
-                  <option value="operador">Operador (Control + Ver)</option>
-                  <option value="visualizador">Visualizador (Solo Ver)</option>
-                  <option value="admin">Administrador (Total)</option>
-                </select>
-                <p className="text-xs text-slate-400 mt-1">
-                  * El Admin puede gestionar usuarios y dispositivos.
-                </p>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                <input 
+                  type="email" 
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.email}
+                  onChange={e => setFormData({...formData, email: e.target.value})}
+                />
               </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700">Crear Usuario</button>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                  <select 
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.role}
+                    onChange={e => setFormData({...formData, role: e.target.value})}
+                  >
+                    <option value="operator">Operator (Read Only)</option>
+                    <option value="admin">Admin (Full Control)</option>
+                    {userProfile?.role === 'super_admin' && (
+                        <option value="super_admin">Super Admin (God Mode)</option>
+                    )}
+                  </select>
+                </div>
+                <div>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Tenant ID</label>
+                   <input 
+                      type="text" 
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50"
+                      value={formData.tenantId}
+                      onChange={e => setFormData({...formData, tenantId: e.target.value})}
+                      disabled={userProfile?.role !== 'super_admin'}
+                   />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Auth UID (Optional)</label>
+                <input 
+                  type="text" 
+                  placeholder="Paste UID from Firebase Console..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-xs"
+                  value={formData.uid}
+                  onChange={e => setFormData({...formData, uid: e.target.value})}
+                />
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                >
+                  Create Profile
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 };

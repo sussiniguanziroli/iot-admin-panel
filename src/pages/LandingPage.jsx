@@ -1,121 +1,167 @@
-import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, Activity, Zap, Server, Shield, Smartphone, Globe } from 'lucide-react';
 
 const LandingPage = () => {
-  const { login, user } = useAuth();
-  const [showLogin, setShowLogin] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-  if (user) {
-    return <Navigate to="/app/dashboard" replace />;
-  }
+  const handleLoginClick = () => {
+    navigate('/login');
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    try {
-      await login(email, password);
-    } catch (err) {
-      setError('Failed to sign in. Check your credentials.');
-    }
+  const handleDemoClick = () => {
+    console.log("Demo requested - Feature coming soon");
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col relative overflow-hidden">
-      
-      <div className="absolute inset-0 z-0 opacity-20">
-        <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
-        <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
-      </div>
-
-      <nav className="relative z-10 p-6 flex justify-between items-center max-w-7xl mx-auto w-full">
-        <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-          SolFrut SCADA
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      <nav className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+              <Activity size={20} />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-slate-900">
+              Fortunato.ctech IOT dashboard
+            </span>
+          </div>
+          <button
+            onClick={handleLoginClick}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Access Platform
+          </button>
         </div>
       </nav>
 
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-4">
-        
-        {!showLogin ? (
-          <div className="text-center max-w-3xl space-y-8 animate-fade-in-up">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-              Industrial IoT <br />
-              <span className="text-blue-500">Real-time Analytics</span>
-            </h1>
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-              Monitor, control, and analyze your industrial infrastructure with precision. 
-              Integrated BigQuery analytics and real-time MQTT telemetry.
-            </p>
-            <button 
-              onClick={() => setShowLogin(true)}
-              className="group relative px-8 py-4 bg-blue-600 rounded-full font-bold text-lg hover:bg-blue-500 transition-all hover:scale-105 hover:shadow-lg hover:shadow-blue-500/50"
-            >
-              Access Platform
-              <span className="absolute inset-0 rounded-full ring-2 ring-white/20 group-hover:ring-white/40 transition-all"></span>
-            </button>
-          </div>
-        ) : (
-          <div className="w-full max-w-md bg-white/5 backdrop-blur-lg border border-white/10 p-8 rounded-2xl shadow-2xl animate-fade-in">
-            <div className="mb-8">
-              <button 
-                onClick={() => setShowLogin(false)}
-                className="text-sm text-slate-400 hover:text-white mb-4 flex items-center gap-2"
-              >
-                ← Back
-              </button>
-              <h2 className="text-3xl font-bold">Welcome Back</h2>
-              <p className="text-slate-400">Enter your credentials to access the dashboard</p>
+      <div className="relative overflow-hidden pt-16 pb-24 lg:pt-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+            <div className="sm:text-center md:mx-auto md:max-w-2xl lg:col-span-6 lg:text-left">
+              <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-800">
+                <span className="flex h-2 w-2 rounded-full bg-blue-600 mr-2"></span>
+                v2.0 System Online
+              </div>
+              <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
+                Industrial IoT
+                <span className="block text-blue-600">Monitoring & Control</span>
+              </h1>
+              <p className="mt-3 text-base text-slate-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
+                Real-time telemetry, remote management, and advanced analytics for your industrial infrastructure. Powered by Fortunato.ctech.
+              </p>
+              <div className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left lg:mx-0">
+                <button
+                  onClick={handleDemoClick}
+                  className="inline-flex items-center rounded-lg bg-blue-600 px-8 py-3 text-base font-medium text-white transition-colors hover:bg-blue-700 md:text-lg"
+                >
+                  Launch Dashboard
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </button>
+              </div>
             </div>
-
-            {error && (
-              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 text-red-200 rounded-lg text-sm">
-                {error}
+            <div className="relative mt-12 sm:max-w-lg sm:mx-auto lg:mt-0 lg:max-w-none lg:mx-0 lg:col-span-6 lg:flex lg:items-center">
+              <div className="relative mx-auto w-full rounded-lg shadow-lg lg:max-w-md">
+                <div className="relative block w-full overflow-hidden rounded-lg bg-slate-900 opacity-90">
+                  <div className="p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="text-slate-100 font-semibold">System Status</div>
+                      <div className="flex items-center text-green-400 text-sm">
+                        <div className="h-2 w-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                        Operational
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="bg-slate-800/50 p-4 rounded border border-slate-700">
+                        <div className="flex justify-between text-sm mb-2 text-slate-400">
+                          <span>Server Load</span>
+                          <span>42%</span>
+                        </div>
+                        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-500 w-[42%]"></div>
+                        </div>
+                      </div>
+                      <div className="bg-slate-800/50 p-4 rounded border border-slate-700">
+                        <div className="flex justify-between text-sm mb-2 text-slate-400">
+                          <span>Active Nodes</span>
+                          <span>128/128</span>
+                        </div>
+                        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 w-full"></div>
+                        </div>
+                      </div>
+                      <div className="bg-slate-800/50 p-4 rounded border border-slate-700">
+                        <div className="flex justify-between text-sm mb-2 text-slate-400">
+                          <span>Network Latency</span>
+                          <span>24ms</span>
+                        </div>
+                        <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-purple-500 w-[15%]"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-slate-500 transition-all"
-                  placeholder="admin@solfrut.com"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-slate-500 transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg"
-              >
-                Sign In
-              </button>
-            </form>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      <div className="relative z-10 py-6 text-center text-slate-500 text-sm">
-        © 2025 SolFrut IoT Systems. Secure Connection.
+      <div className="bg-white py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl lg:text-center">
+            <h2 className="text-base font-semibold leading-7 text-blue-600">Platform Capabilities</h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Everything you need to monitor your fleet
+            </p>
+          </div>
+          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
+              <div className="flex flex-col">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                  <Zap className="h-5 w-5 flex-none text-blue-600" />
+                  Real-time Data
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                  <p className="flex-auto">Instant telemetry streaming via MQTT. Monitor voltage, current, temperature, and status indicators with sub-second latency.</p>
+                </dd>
+              </div>
+              <div className="flex flex-col">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                  <Server className="h-5 w-5 flex-none text-blue-600" />
+                  Device Management
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                  <p className="flex-auto">Centralized control for all your IoT nodes. Remote configuration, firmware updates, and connection status logging.</p>
+                </dd>
+              </div>
+              <div className="flex flex-col">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                  <Shield className="h-5 w-5 flex-none text-blue-600" />
+                  Secure Architecture
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                  <p className="flex-auto">Enterprise-grade security with encrypted communication, role-based access control, and comprehensive audit trails.</p>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
       </div>
+
+      <footer className="bg-slate-900 py-12">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
+            <p className="text-sm text-slate-400">
+              &copy; {new Date().getFullYear()} Fortunato.ctech. All rights reserved.
+            </p>
+            <div className="flex gap-6">
+              <Globe className="h-5 w-5 text-slate-400 hover:text-white cursor-pointer" />
+              <Smartphone className="h-5 w-5 text-slate-400 hover:text-white cursor-pointer" />
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
