@@ -22,7 +22,7 @@ const MainLayout = () => {
   
   const { isEditMode, toggleEditMode, machines, widgets, loadProfile } = useDashboard();
   const { connectionStatus, disconnect } = useMqtt();
-  const { user, userProfile, logout, hasPermission } = useAuth();
+  const { userProfile, logout, hasPermission } = useAuth();
 
   // --- EXPORT LOGIC ---
   const handleExport = () => {
@@ -89,7 +89,6 @@ const MainLayout = () => {
       icon: <Users size={20} />, 
       restricted: true 
     },
-    // 👇 NEW: Super Admin Only Route
     { 
       path: '/app/tenants', 
       label: 'Tenants (Big Brother)', 
@@ -175,20 +174,31 @@ const MainLayout = () => {
 
           <div className="flex items-center gap-4">
             
-            {/* Connection Status */}
-            <button 
-              onClick={() => setIsMqttModalOpen(true)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all hover:opacity-80 
-              ${connectionStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 
-                connectionStatus === 'connecting' ? 'bg-yellow-50 text-yellow-600 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
-                'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800'}`}
-            >
-              {connectionStatus === 'connected' ? <Wifi size={14} /> : <WifiOff size={14} />}
-              <span className="hidden sm:inline">
-                {connectionStatus === 'connected' ? 'ONLINE' : connectionStatus === 'connecting' ? 'CONECTANDO' : 'OFFLINE'}
-              </span>
-              <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-            </button>
+            {/* CONNECTION STATUS - UPDATED LOGIC */}
+            {/* Only Admins/Super Admins can click to open manual connection settings */}
+            {hasPermission('admin') ? (
+                <button 
+                  onClick={() => setIsMqttModalOpen(true)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all hover:opacity-80 
+                  ${connectionStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 
+                    connectionStatus === 'connecting' ? 'bg-yellow-50 text-yellow-600 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
+                    'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800'}`}
+                >
+                  {connectionStatus === 'connected' ? <Wifi size={14} /> : <WifiOff size={14} />}
+                  <span className="hidden sm:inline">
+                    {connectionStatus === 'connected' ? 'ONLINE' : connectionStatus === 'connecting' ? 'CONECTANDO' : 'OFFLINE'}
+                  </span>
+                  <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                </button>
+            ) : (
+                /* READ-ONLY Status for Tenants/Operators */
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border 
+                    ${connectionStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 
+                    'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>
+                    <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></div>
+                    {connectionStatus === 'connected' ? 'SYSTEM ONLINE' : 'CONNECTING...'}
+                </div>
+            )}
 
             {/* Edit Mode Button */}
             {location.pathname.includes('dashboard') && hasPermission('admin') && (

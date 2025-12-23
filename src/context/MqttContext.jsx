@@ -1,90 +1,85 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import mqtt from 'mqtt';
 
 const MqttContext = createContext();
 
 export const MqttProvider = ({ children }) => {
   const [client, setClient] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState('disconnected'); // disconnected, connecting, connected, error
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [lastMessage, setLastMessage] = useState(null);
-  const [config, setConfig] = useState(null);
+  
+  // Track active config to avoid re-connecting to same broker
+  const [activeConfig, setActiveConfig] = useState(null);
 
-  // Cargar configuración guardada al inicio
-  useEffect(() => {
-    const savedConfig = localStorage.getItem('mqtt_config');
-    if (savedConfig) {
-      setConfig(JSON.parse(savedConfig));
+  const connectToBroker = useCallback((mqttConfig) => {
+    if (!mqttConfig || !mqttConfig.host) {
+        console.warn("⚠️ Cannot connect: Missing MQTT Config");
+        return;
     }
-  }, []);
 
-  // Función para conectar (llamada desde el Modal o al inicio)
-  const connect = useCallback((mqttConfig) => {
-    if (!mqttConfig) return;
+    if (activeConfig && 
+        activeConfig.host === mqttConfig.host && 
+        activeConfig.username === mqttConfig.username) {
+        // Already connected to this broker, no action needed
+        return; 
+    }
 
+    console.log(`🔌 Switching Broker: Connecting to ${mqttConfig.host}...`);
     setConnectionStatus('connecting');
-    console.log('Intentando conectar a MQTT:', mqttConfig.host);
+
+    if (client) {
+        console.log("Disconnecting previous client...");
+        client.end(true); 
+    }
 
     const url = `${mqttConfig.protocol}://${mqttConfig.host}:${mqttConfig.port}/mqtt`;
-    
     const options = {
       username: mqttConfig.username,
       password: mqttConfig.password,
-      clientId: `solfrut_dash_${Math.random().toString(16).substring(2, 8)}`,
+      clientId: `solfrut_${Math.random().toString(16).substring(2, 8)}`,
       keepalive: 60,
       clean: true,
       reconnectPeriod: 5000,
     };
 
-    // Si ya existía un cliente, lo cerramos antes
-    if (client) client.end();
+    const newClient = mqtt.connect(url, options);
 
-    const mqttClient = mqtt.connect(url, options);
-
-    mqttClient.on('connect', () => {
-      console.log('✅ Conectado al Broker');
+    newClient.on('connect', () => {
+      console.log('✅ Connected to Broker:', mqttConfig.host);
       setConnectionStatus('connected');
-      // Guardar configuración exitosa
-      localStorage.setItem('mqtt_config', JSON.stringify(mqttConfig));
-      setConfig(mqttConfig);
+      setActiveConfig(mqttConfig);
     });
 
-    mqttClient.on('error', (err) => {
-      console.error('❌ Error MQTT:', err);
+    newClient.on('error', (err) => {
+      console.error('❌ MQTT Error:', err);
       setConnectionStatus('error');
     });
 
-    mqttClient.on('offline', () => {
+    newClient.on('offline', () => {
       setConnectionStatus('disconnected');
     });
 
-    mqttClient.on('message', (topic, message) => {
+    newClient.on('message', (topic, message) => {
       setLastMessage({ topic, payload: message.toString(), timestamp: new Date() });
     });
 
-    setClient(mqttClient);
-  }, [client]); // ✅ CORRECCIÓN: Agregamos 'client' a las dependencias
+    setClient(newClient);
 
-  const disconnect = () => {
+  }, [client, activeConfig]);
+
+  const disconnect = useCallback(() => {
     if (client) {
       client.end();
       setClient(null);
       setConnectionStatus('disconnected');
-      localStorage.removeItem('mqtt_config');
-      setConfig(null);
+      setActiveConfig(null);
     }
-  };
-
-  // Auto-conectar si hay config guardada
-  useEffect(() => {
-    if (config && !client) {
-      connect(config);
-    }
-  }, [config, connect, client]); // Agregué client por seguridad
+  }, [client]);
 
   const subscribeToTopic = (topic) => {
     if (client?.connected) {
       client.subscribe(topic, (err) => {
-        if (err) console.error(`Error suscribiendo a ${topic}:`, err);
+        if (err) console.error(`Error subscribing to ${topic}:`, err);
       });
     }
   };
@@ -102,9 +97,9 @@ export const MqttProvider = ({ children }) => {
       lastMessage, 
       subscribeToTopic, 
       publishMessage,
-      connect,      
+      connectToBroker, // <--- EXPOSED
       disconnect,   
-      config        
+      activeConfig        
     }}>
       {children}
     </MqttContext.Provider>
