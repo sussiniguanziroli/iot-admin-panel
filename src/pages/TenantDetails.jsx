@@ -3,9 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
+import { createInvitation } from '../services/AdminService'; 
 import { 
   Building2, ArrowLeft, Save, UserPlus, Trash2, Crown, Mail, Eye, 
-  Activity, MapPin, Wifi, Plus, Server, Edit3, Globe, Layers 
+  Activity, MapPin, Wifi, Plus, Server, Edit3, Globe, Layers,
+  Link as LinkIcon, Copy, Check
 } from 'lucide-react';
 
 // --- LEAFLET MAP IMPORTS ---
@@ -13,7 +16,6 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Fix for default Leaflet icon not loading in React
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -32,7 +34,6 @@ const LocationMarker = ({ position, setPosition }) => {
       setPosition(e.latlng);
     },
   });
-
   return position ? <Marker position={position} /> : null;
 };
 
@@ -40,6 +41,7 @@ const TenantDetails = () => {
   const { tenantId } = useParams();
   const navigate = useNavigate();
   const { switchTenant } = useDashboard();
+  const { user } = useAuth(); // Admin user for logging
   
   const [tenant, setTenant] = useState(null);
   const [tenantUsers, setTenantUsers] = useState([]);
@@ -47,7 +49,7 @@ const TenantDetails = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
-  // --- LOCATION MANAGER STATE ---
+  // --- LOCATION STATE ---
   const [selectedLocationId, setSelectedLocationId] = useState(null); 
   const [locationForm, setLocationForm] = useState({
     name: '', id: '', address: '', lat: -34.6037, lng: -58.3816, 
@@ -55,10 +57,14 @@ const TenantDetails = () => {
   });
   const [locSubTab, setLocSubTab] = useState('info'); 
 
-  // Overview & User Forms
-  const [overviewForm, setOverviewForm] = useState({ name: '', plan: 'basic', status: 'active', maxDevices: 10, contactEmail: '' });
+  // --- INVITATION STATE ---
+  const [inviteLink, setInviteLink] = useState('');
+  const [hasCopied, setHasCopied] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ email: '', name: '', role: 'operator' });
+  const [newUser, setNewUser] = useState({ email: '', role: 'operator' }); // Name is set by user on register
+
+  // --- OVERVIEW STATE ---
+  const [overviewForm, setOverviewForm] = useState({ name: '', plan: 'basic', status: 'active', maxDevices: 10, contactEmail: '' });
 
   // 1. Fetch Data
   useEffect(() => {
@@ -94,7 +100,7 @@ const TenantDetails = () => {
     fetchData();
   }, [tenantId, navigate]);
 
-  // --- HELPER: Select a Location ---
+  // --- HELPERS ---
   const selectLocation = (loc) => {
       setSelectedLocationId(loc.id);
       setLocationForm({
@@ -121,7 +127,20 @@ const TenantDetails = () => {
       setLocSubTab('info');
   };
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setHasCopied(true);
+    setTimeout(() => setHasCopied(false), 2000);
+  };
+
+  const resetInviteModal = () => {
+      setIsUserModalOpen(false);
+      setInviteLink('');
+      setNewUser({ email: '', role: 'operator' });
+  };
+
   // --- ACTIONS ---
+
   const handleSaveLocation = async (e) => {
     e.preventDefault();
     const locId = (selectedLocationId === 'NEW' || !selectedLocationId) 
@@ -185,17 +204,16 @@ const TenantDetails = () => {
 
   const handleImpersonate = () => { switchTenant(tenantId); navigate('/app/dashboard'); };
   
-  const handleAddUser = async (e) => {
+  // --- INVITATION HANDLER (REPLACES DIRECT ADD) ---
+  const handleGenerateInvite = async (e) => {
     e.preventDefault();
-    const uid = newUser.email; 
     try {
-      await setDoc(doc(db, "users", uid), {
-        ...newUser, tenantId: tenantId, createdAt: new Date().toISOString()
-      });
-      setTenantUsers([...tenantUsers, { id: uid, ...newUser, tenantId }]);
-      setIsUserModalOpen(false);
-      setNewUser({ email: '', name: '', role: 'operator' });
-    } catch (e) { console.error(e); }
+        const link = await createInvitation(user, tenantId, newUser.role, newUser.email);
+        setInviteLink(link);
+    } catch (e) {
+        console.error(e);
+        alert("Error generating invite");
+    }
   };
 
   const handleRemoveUser = async (userId) => {
@@ -240,11 +258,11 @@ const TenantDetails = () => {
         ))}
       </div>
 
-      {/* ======================= TAB: LOCATIONS (MASTER-DETAIL) ======================= */}
+      {/* ======================= TAB: LOCATIONS ======================= */}
       {activeTab === 'locations' && (
         <div className="flex flex-col md:flex-row gap-6 h-[700px]">
             
-            {/* LEFT SIDEBAR: LIST */}
+            {/* LIST */}
             <div className="w-full md:w-1/4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                     <span className="font-bold text-slate-700 dark:text-slate-200">Sites</span>
@@ -272,9 +290,8 @@ const TenantDetails = () => {
                 </div>
             </div>
 
-            {/* RIGHT PANEL: EDITOR */}
+            {/* EDITOR */}
             <div className="w-full md:w-3/4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
-                {/* Editor Header */}
                 <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 shadow-sm">
@@ -288,7 +305,6 @@ const TenantDetails = () => {
                         </div>
                     </div>
                     
-                    {/* Inner Tabs */}
                     <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg">
                         <button 
                             onClick={() => setLocSubTab('info')}
@@ -307,8 +323,6 @@ const TenantDetails = () => {
 
                 <div className="flex-1 overflow-y-auto p-6">
                     <form id="loc-form" onSubmit={handleSaveLocation} className="space-y-6">
-                        
-                        {/* --- SUBTAB: INFO & MAP --- */}
                         {locSubTab === 'info' && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
                                 <div className="space-y-4">
@@ -353,7 +367,6 @@ const TenantDetails = () => {
                             </div>
                         )}
 
-                        {/* --- SUBTAB: MQTT --- */}
                         {locSubTab === 'mqtt' && (
                             <div className="max-w-lg mx-auto space-y-6 pt-4">
                                 <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700 text-center">
@@ -400,11 +413,9 @@ const TenantDetails = () => {
                                 </div>
                             </div>
                         )}
-
                     </form>
                 </div>
 
-                {/* Editor Footer */}
                 <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
                     {selectedLocationId !== 'NEW' ? (
                         <button onClick={() => handleDeleteLocation(selectedLocationId)} className="text-red-500 hover:text-red-700 text-sm font-bold flex items-center gap-1">
@@ -431,7 +442,7 @@ const TenantDetails = () => {
         </div>
       )}
 
-      {/* --- TAB: USERS (RESTORED STYLES) --- */}
+      {/* --- TAB: USERS (INVITATION SYSTEM) --- */}
       {activeTab === 'users' && (
         <div className="space-y-6 animate-in fade-in">
             <div className="flex justify-between items-center bg-blue-50 dark:bg-slate-800/50 p-4 rounded-xl border border-blue-100 dark:border-slate-700">
@@ -440,7 +451,7 @@ const TenantDetails = () => {
                     <p className="text-sm text-blue-700 dark:text-blue-300">Create accounts for {tenant.name} employees.</p>
                 </div>
                 <button onClick={() => setIsUserModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-bold shadow-sm">
-                    <UserPlus size={18} /> Add User
+                    <UserPlus size={18} /> Invite User
                 </button>
             </div>
             
@@ -493,64 +504,64 @@ const TenantDetails = () => {
         </div>
       )}
 
-      {/* --- USER MODAL (RESTORED STYLES) --- */}
+      {/* --- MODAL: INVITE USER (SECURE FLOW) --- */}
       {isUserModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
             <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-xl p-6 shadow-2xl animate-in fade-in zoom-in-95">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">Grant Access</h3>
-                    <button onClick={() => setIsUserModalOpen(false)} className="text-slate-400 hover:text-slate-600">&times;</button>
-                </div>
                 
-                <form onSubmit={handleAddUser} className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Full Name</label>
-                        <input 
-                            type="text" 
-                            required 
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white transition-all"
-                            value={newUser.name} 
-                            onChange={e => setNewUser({...newUser, name: e.target.value})} 
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Email Address</label>
-                        <input 
-                            type="email" 
-                            required 
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white transition-all"
-                            value={newUser.email} 
-                            onChange={e => setNewUser({...newUser, email: e.target.value})} 
-                        />
-                    </div>
-                    <div>
-                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Role Permission</label>
-                         <select 
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-700 dark:border-slate-600 dark:text-white transition-all"
-                            value={newUser.role} 
-                            onChange={e => setNewUser({...newUser, role: e.target.value})}
-                        >
-                            <option value="operator">Operator (Read Only)</option>
-                            <option value="admin">Admin (Full Control)</option>
-                        </select>
-                    </div>
-                    
-                    <div className="pt-4 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-700 mt-6">
-                        <button 
-                            type="button" 
-                            onClick={() => setIsUserModalOpen(false)} 
-                            className="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors"
-                        >
-                            Cancel
+                {!inviteLink ? (
+                    // STATE 1: CONFIGURATION FORM
+                    <>
+                        <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-white">Invite User</h3>
+                        <p className="text-sm text-slate-500 mb-4">Generate a secure registration link for a new user.</p>
+                        
+                        <form onSubmit={handleGenerateInvite} className="space-y-4">
+                            <div>
+                                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Role Permission</label>
+                                 <select className="w-full px-3 py-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                     value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
+                                    <option value="operator">Operator (Read Only)</option>
+                                    <option value="admin">Tenant Admin (Full Control)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Restrict to Email (Optional)</label>
+                                <input type="email" className="w-full px-3 py-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                     value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} 
+                                     placeholder="john@company.com" />
+                                <p className="text-[10px] text-slate-400 mt-1">If set, only this email can use the link.</p>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button type="button" onClick={resetInviteModal} className="px-4 py-2 text-slate-500 hover:text-slate-700 dark:text-slate-400">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold flex items-center gap-2">
+                                    <LinkIcon size={16}/> Generate Link
+                                </button>
+                            </div>
+                        </form>
+                    </>
+                ) : (
+                    // STATE 2: SHOW LINK
+                    <div className="text-center">
+                        <div className="mx-auto w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
+                            <Check size={24}/>
+                        </div>
+                        <h3 className="font-bold text-lg text-slate-800 dark:text-white">Invitation Ready</h3>
+                        <p className="text-sm text-slate-500 mb-6">Send this link to the user to grant access.</p>
+                        
+                        <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center gap-2 mb-6">
+                            <input readOnly value={inviteLink} className="bg-transparent flex-1 text-xs font-mono text-slate-600 dark:text-slate-300 outline-none overflow-hidden text-ellipsis"/>
+                            <button onClick={copyToClipboard} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 font-bold p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors" title="Copy">
+                                {hasCopied ? <Check size={18}/> : <Copy size={18}/>}
+                            </button>
+                        </div>
+
+                        <button onClick={resetInviteModal} className="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-2 rounded-lg font-bold hover:opacity-90">
+                            Done
                         </button>
-                        <button 
-                            type="submit" 
-                            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all"
-                        >
-                            Create User
-                        </button>
                     </div>
-                </form>
+                )}
             </div>
         </div>
       )}
