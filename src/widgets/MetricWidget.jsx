@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Zap, Clock, Box, Droplets, Thermometer, Activity } from 'lucide-react';
 import BaseWidget from './BaseWidget';
-import { useMqtt } from '../context/MqttContext';
+import { useMqtt } from '../features/mqtt/context/MqttContext';
 
 const ICON_MAP = {
   zap: Zap,

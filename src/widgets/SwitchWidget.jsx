@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Power, ToggleLeft } from 'lucide-react';
+import { Power, ToggleLeft, Lock } from 'lucide-react';
 import BaseWidget from './BaseWidget';
-import { useMqtt } from '../context/MqttContext';
+import { useMqtt } from '../features/mqtt/context/MqttContext';
+import { usePermissions } from '../shared/hooks/usePermissions';
 
-// ✅ STORE DATA OUTSIDE COMPONENT
 const switchStateStore = {};
 
 const SwitchWidget = ({ id, title, topic, commandTopic }) => {
-  // ✅ Initialize from store if exists
+  const { can } = usePermissions();
   const [isOn, setIsOn] = useState(() => switchStateStore[id] || false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   
   const { subscribeToTopic, publishMessage, lastMessage } = useMqtt();
 
-  // ✅ Subscribe only once
   useEffect(() => {
     if (!hasSubscribed.current) {
       subscribeToTopic(topic);
@@ -22,7 +21,6 @@ const SwitchWidget = ({ id, title, topic, commandTopic }) => {
     }
   }, [topic, subscribeToTopic]);
 
-  // ✅ Listen and persist
   useEffect(() => {
     if (lastMessage && lastMessage.topic === topic) {
       try {
@@ -31,8 +29,6 @@ const SwitchWidget = ({ id, title, topic, commandTopic }) => {
           const newState = payload.estado === 'ON';
           setIsOn(newState);
           setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-          
-          // ✅ Save to persistent store
           switchStateStore[id] = newState;
         }
       } catch (e) {
@@ -51,8 +47,13 @@ const SwitchWidget = ({ id, title, topic, commandTopic }) => {
   }, [lastMessage, topic, id]);
 
   const toggle = () => {
+    if (!can.controlEquipment) {
+      alert('⛔ You do not have permission to control equipment');
+      return;
+    }
+    
     const command = isOn ? "PARADA" : "MARCHA";
-    console.log(`[SwitchWidget] Click! Enviando: ${command} para ${commandTopic}`);
+    console.log(`[SwitchWidget] Click! Sending: ${command} to ${commandTopic}`);
     publishMessage(commandTopic, command);
   };
 
@@ -61,17 +62,28 @@ const SwitchWidget = ({ id, title, topic, commandTopic }) => {
       <div className="flex flex-col items-center justify-center py-6">
         <button
           onClick={toggle}
-          className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg border-4 ${
+          disabled={!can.controlEquipment}
+          className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg border-4 relative ${
             isOn 
               ? 'bg-emerald-500 border-emerald-100 text-white shadow-emerald-200' 
               : 'bg-slate-50 border-slate-100 text-slate-300'
-          }`}
+          } ${!can.controlEquipment ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
         >
           <Power size={36} />
+          {!can.controlEquipment && (
+            <div className="absolute -bottom-1 -right-1 bg-orange-500 text-white p-1 rounded-full">
+              <Lock size={12} />
+            </div>
+          )}
         </button>
         <span className={`mt-3 text-sm font-bold tracking-wide ${isOn ? 'text-emerald-600' : 'text-slate-300'}`}>
-          {isOn ? 'ENCENDIDO' : 'APAGADO'}
+          {isOn ? 'ON' : 'OFF'}
         </span>
+        {!can.controlEquipment && (
+          <span className="mt-2 text-xs text-orange-500 font-medium flex items-center gap-1">
+            <Lock size={10} /> Read Only
+          </span>
+        )}
       </div>
     </BaseWidget>
   );

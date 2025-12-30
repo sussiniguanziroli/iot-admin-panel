@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Zap } from 'lucide-react';
 import BaseWidget from './BaseWidget';
-import { useMqtt } from '../context/MqttContext';
+import { useMqtt } from '../features/mqtt/context/MqttContext';
 
 const gaugeDataStore = {};
 

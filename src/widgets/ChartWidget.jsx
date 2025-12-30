@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity } from 'lucide-react';
 import BaseWidget from './BaseWidget';
-import { useMqtt } from '../context/MqttContext';
+import { useMqtt } from '../features/mqtt/context/MqttContext';
 
 const HEIGHT_MAP = { sm: 'h-40', md: 'h-64', lg: 'h-96', xl: 'h-[500px]' };
 const chartDataStore = {};
