@@ -145,6 +145,14 @@ export const DashboardProvider = ({ children }) => {
      setWidgets(up);
      saveLayout(machines, up);
   };
+
+  const updateWidget = (updatedWidget) => {
+    const updatedWidgets = widgets.map(w => 
+      w.id === updatedWidget.id ? updatedWidget : w
+    );
+    setWidgets(updatedWidgets);
+    saveLayout(machines, updatedWidgets);
+  };
   
   const removeWidget = (id) => {
       const up = widgets.filter(w => w.id !== id);
@@ -189,7 +197,7 @@ export const DashboardProvider = ({ children }) => {
       loadProfile, loadingData,
       viewedTenantId, switchTenant,
       // LOCATION EXPORTS
-      locations, activeLocation, switchLocation 
+      locations, activeLocation, switchLocation ,updateWidget
     }}>
       {children}
     </DashboardContext.Provider>

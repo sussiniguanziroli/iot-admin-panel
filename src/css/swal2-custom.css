@@ -1,0 +1,37 @@
+.swal2-popup {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    border-radius: 16px;
+  }
+  
+  .swal2-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  
+  .swal2-html-container {
+    font-size: 0.95rem;
+    color: #475569;
+  }
+  
+  .swal2-confirm {
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  
+  .swal2-cancel {
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  
+  .swal2-icon {
+    border-width: 3px;
+  }
+  
+  .swal2-styled:focus {
+    box-shadow: none;
+  }

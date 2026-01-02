@@ -10,8 +10,9 @@ import SwitchWidget from '../../../widgets/SwitchWidget';
 import MetricWidget from '../../../widgets/MetricWidget';
 import ChartWidget from '../../../widgets/ChartWidget';
 
-import AddWidgetModal from '../components/AddWidgetModal';
-import AddMachineModal from '../components/AddMachineModal';
+
+import WidgetConfigModal from '../../dashboard/components/WidgetConfigModal';
+import AddMachineModal from '../../dashboard/components/AddMachineModal';
 import { 
     PlusCircle, Plus, X, Building, ChevronDown, Loader2, 
     MapPin, AlertCircle, Lock 
@@ -19,19 +20,21 @@ import {
 import { DndContext, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 
-const WidgetFactory = ({ widget }) => {
+const WidgetFactory = ({ widget, onEdit }) => {
+    const commonProps = { ...widget, onEdit };
+    
     switch (widget.type) {
-        case 'gauge': return <GaugeWidget {...widget} />;
-        case 'switch': return <SwitchWidget {...widget} />;
-        case 'metric': return <MetricWidget {...widget} />;
-        case 'chart': return <ChartWidget {...widget} />;
+        case 'gauge': return <GaugeWidget {...commonProps} />;
+        case 'switch': return <SwitchWidget {...commonProps} />;
+        case 'metric': return <MetricWidget {...commonProps} />;
+        case 'chart': return <ChartWidget {...commonProps} />;
         default: return null;
     }
 };
 
 const Dashboard = () => {
     const {
-        widgets, isEditMode, addWidget,
+        widgets, isEditMode, addWidget, updateWidget,
         machines, activeMachineId, setActiveMachineId, addMachine, removeMachine,
         reorderWidgets, viewedTenantId, switchTenant, loadingData,
         locations, activeLocation, switchLocation 
@@ -42,6 +45,7 @@ const Dashboard = () => {
     
     const [isWidgetModalOpen, setIsWidgetModalOpen] = useState(false);
     const [isMachineModalOpen, setIsMachineModalOpen] = useState(false);
+    const [editingWidget, setEditingWidget] = useState(null);
     const [availableTenants, setAvailableTenants] = useState([]);
 
     const sensors = useSensors(
@@ -75,6 +79,24 @@ const Dashboard = () => {
             const newIndex = widgets.findIndex((w) => w.id === over.id);
             reorderWidgets(oldIndex, newIndex);
         }
+    };
+
+    const handleEditWidget = (widget) => {
+        setEditingWidget(widget);
+        setIsWidgetModalOpen(true);
+    };
+
+    const handleSaveWidget = (widgetData) => {
+        if (editingWidget) {
+            updateWidget(widgetData);
+        } else {
+            addWidget(widgetData);
+        }
+    };
+
+    const handleCloseModal = () => {
+        setIsWidgetModalOpen(false);
+        setEditingWidget(null);
     };
 
     return (
@@ -203,13 +225,19 @@ const Dashboard = () => {
                                     key={widget.id}
                                     className={widget.width === 'full' ? 'col-span-1 md:col-span-2 lg:col-span-3' : 'col-span-1'}
                                 >
-                                    <WidgetFactory widget={widget} />
+                                    <WidgetFactory 
+                                        widget={widget} 
+                                        onEdit={() => handleEditWidget(widget)}
+                                    />
                                 </div>
                             ))}
 
                             {isEditMode && can.editDashboard && (
                                 <button
-                                    onClick={() => setIsWidgetModalOpen(true)}
+                                    onClick={() => {
+                                        setEditingWidget(null);
+                                        setIsWidgetModalOpen(true);
+                                    }}
                                     className="col-span-1 border-3 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-6 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all min-h-[250px] group animate-in fade-in"
                                 >
                                     <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-100 dark:group-hover:bg-blue-900 flex items-center justify-center mb-4 transition-colors">
@@ -252,10 +280,12 @@ const Dashboard = () => {
 
             {can.editDashboard && (
                 <>
-                    <AddWidgetModal 
+                    <WidgetConfigModal 
                         isOpen={isWidgetModalOpen} 
-                        onClose={() => setIsWidgetModalOpen(false)} 
-                        onSave={addWidget} 
+                        onClose={handleCloseModal} 
+                        onSave={handleSaveWidget}
+                        widget={editingWidget}
+                        machineId={activeMachineId}
                     />
                     <AddMachineModal 
                         isOpen={isMachineModalOpen} 

@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity } from 'lucide-react';
 import BaseWidget from './BaseWidget';
-import { useMqtt } from '../features/mqtt/context/MqttContext';
+import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
 
 const HEIGHT_MAP = { sm: 'h-40', md: 'h-64', lg: 'h-96', xl: 'h-[500px]' };
 const chartDataStore = {};
 
-const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'md', min, max }) => {
+const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'md', min, max, onEdit }) => {
   const [history, setHistory] = useState(() => chartDataStore[id] || []);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
@@ -27,7 +27,6 @@ const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'm
         const payload = JSON.parse(lastMessage.payload);
         const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-        // ✅ Handle both formats
         let val;
         
         if (payload[dataKey] !== undefined) {
@@ -59,7 +58,7 @@ const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'm
   ];
 
   return (
-    <BaseWidget id={id} title={title} icon={Activity} lastUpdated={lastUpdated}>
+    <BaseWidget id={id} title={title} icon={Activity} lastUpdated={lastUpdated} onEdit={onEdit}>
       <div className={`w-full ${HEIGHT_MAP[height] || HEIGHT_MAP.md} mt-2`}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={history}>
@@ -69,7 +68,7 @@ const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'm
                 <stop offset="95%" stopColor={color} stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-700" />
             <XAxis dataKey="time" hide />
             <YAxis 
               domain={yDomain} 
@@ -80,7 +79,13 @@ const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'm
               tickFormatter={(val) => val.toFixed(0)}
             />
             <Tooltip 
-              contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+              contentStyle={{
+                borderRadius: '8px', 
+                border: 'none', 
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                backgroundColor: 'white'
+              }}
+              labelStyle={{ color: '#334155' }}
             />
             <Area 
               type="monotone" 

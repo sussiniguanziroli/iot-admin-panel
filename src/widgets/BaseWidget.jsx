@@ -1,11 +1,11 @@
 import React from 'react';
-import { Trash2, Clock } from 'lucide-react';
-import { useDashboard } from '../features/dashboard/context/DashboardContext';
+import { Trash2, Clock, Settings } from 'lucide-react';
+import { useDashboard } from '../../src/features/dashboard/context/DashboardContext';
 import { usePermissions } from '../shared/hooks/usePermissions';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const BaseWidget = ({ id, title, icon: Icon, lastUpdated, children }) => {
+const BaseWidget = ({ id, title, icon: Icon, lastUpdated, children, onEdit }) => {
   const { isEditMode, removeWidget } = useDashboard();
   const { can } = usePermissions();
 
@@ -48,15 +48,30 @@ const BaseWidget = ({ id, title, icon: Icon, lastUpdated, children }) => {
         </div>
         
         {isEditMode && can.editDashboard && (
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              removeWidget(id);
-            }}
-            className="p-1.5 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors cursor-pointer"
-          >
-            <Trash2 size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit && onEdit();
+              }}
+              className="p-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-colors cursor-pointer"
+              title="Edit Widget"
+            >
+              <Settings size={16} />
+            </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm('Are you sure you want to delete this widget?')) {
+                  removeWidget(id);
+                }
+              }}
+              className="p-1.5 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors cursor-pointer"
+              title="Delete Widget"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -69,7 +84,7 @@ const BaseWidget = ({ id, title, icon: Icon, lastUpdated, children }) => {
           <Clock size={12} />
           <span>{lastUpdated ? `Updated: ${lastUpdated}` : 'Waiting for data...'}</span>
         </div>
-        <div className={`w-2 h-2 rounded-full ${lastUpdated ? 'bg-emerald-400' : 'bg-slate-300'}`}></div>
+        <div className={`w-2 h-2 rounded-full ${lastUpdated ? 'bg-emerald-400' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
       </div>
 
       {isEditMode && can.editDashboard && (

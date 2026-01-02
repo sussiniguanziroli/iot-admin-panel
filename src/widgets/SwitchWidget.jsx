@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Power, ToggleLeft, Lock } from 'lucide-react';
 import BaseWidget from './BaseWidget';
-import { useMqtt } from '../features/mqtt/context/MqttContext';
+import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
 import { usePermissions } from '../shared/hooks/usePermissions';
+import { toast } from 'react-toastify';
+import Swal from 'sweetalert2';
 
 const switchStateStore = {};
 
-const SwitchWidget = ({ id, title, topic, commandTopic }) => {
+const SwitchWidget = ({ id, title, topic, commandTopic, onEdit }) => {
   const { can } = usePermissions();
   const [isOn, setIsOn] = useState(() => switchStateStore[id] || false);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -46,27 +48,75 @@ const SwitchWidget = ({ id, title, topic, commandTopic }) => {
     }
   }, [lastMessage, topic, id]);
 
-  const toggle = () => {
+  const toggle = async () => {
     if (!can.controlEquipment) {
-      alert('⛔ You do not have permission to control equipment');
+      toast.error('You do not have permission to control equipment', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true
+      });
       return;
     }
     
     const command = isOn ? "PARADA" : "MARCHA";
-    console.log(`[SwitchWidget] Click! Sending: ${command} to ${commandTopic}`);
-    publishMessage(commandTopic, command);
+    const actionText = isOn ? "stop" : "start";
+    
+    const result = await Swal.fire({
+      title: `${actionText.toUpperCase()} Equipment?`,
+      html: `
+        <div class="text-left space-y-2">
+          <p class="text-slate-600">You are about to <strong>${actionText}</strong> this equipment.</p>
+          <div class="bg-slate-50 p-3 rounded-lg mt-3 text-sm">
+            <p class="font-mono text-slate-500">Command: <strong class="text-slate-900">${command}</strong></p>
+            <p class="font-mono text-slate-500">Topic: <strong class="text-slate-900">${commandTopic}</strong></p>
+          </div>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: isOn ? '#ef4444' : '#10b981',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: `Yes, ${actionText}!`,
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    });
+
+    if (result.isConfirmed) {
+      try {
+        console.log(`[SwitchWidget] Sending: ${command} to ${commandTopic}`);
+        publishMessage(commandTopic, command);
+        
+        toast.success(`Command sent: ${command}`, {
+          position: 'bottom-right',
+          autoClose: 2000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true
+        });
+      } catch (error) {
+        console.error('Error sending command:', error);
+        toast.error('Failed to send command', {
+          position: 'top-right',
+          autoClose: 3000
+        });
+      }
+    }
   };
 
   return (
-    <BaseWidget id={id} title={title} icon={ToggleLeft} lastUpdated={lastUpdated}>
+    <BaseWidget id={id} title={title} icon={ToggleLeft} lastUpdated={lastUpdated} onEdit={onEdit}>
       <div className="flex flex-col items-center justify-center py-6">
         <button
           onClick={toggle}
           disabled={!can.controlEquipment}
           className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg border-4 relative ${
             isOn 
-              ? 'bg-emerald-500 border-emerald-100 text-white shadow-emerald-200' 
-              : 'bg-slate-50 border-slate-100 text-slate-300'
+              ? 'bg-emerald-500 border-emerald-100 dark:border-emerald-900 text-white shadow-emerald-200 dark:shadow-emerald-900/50' 
+              : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-700 text-slate-300 dark:text-slate-600'
           } ${!can.controlEquipment ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
         >
           <Power size={36} />
@@ -76,11 +126,13 @@ const SwitchWidget = ({ id, title, topic, commandTopic }) => {
             </div>
           )}
         </button>
-        <span className={`mt-3 text-sm font-bold tracking-wide ${isOn ? 'text-emerald-600' : 'text-slate-300'}`}>
+        <span className={`mt-3 text-sm font-bold tracking-wide ${
+          isOn ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'
+        }`}>
           {isOn ? 'ON' : 'OFF'}
         </span>
         {!can.controlEquipment && (
-          <span className="mt-2 text-xs text-orange-500 font-medium flex items-center gap-1">
+          <span className="mt-2 text-xs text-orange-500 dark:text-orange-400 font-medium flex items-center gap-1">
             <Lock size={10} /> Read Only
           </span>
         )}
