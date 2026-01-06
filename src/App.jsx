@@ -6,10 +6,12 @@ import { DashboardProvider } from './features/dashboard/context/DashboardContext
 import { MqttProvider } from './features/mqtt/context/MqttContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { ThemeProvider } from './shared/context/ThemeContext';
 
 function App() {
   return (
     <BrowserRouter>
+    <ThemeProvider>
       <AuthProvider>
         <MqttProvider>
           <DashboardProvider>
@@ -29,6 +31,7 @@ function App() {
           </DashboardProvider>
         </MqttProvider>
       </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
