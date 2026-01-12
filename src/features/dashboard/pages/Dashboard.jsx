@@ -10,7 +10,6 @@ import SwitchWidget from '../../../widgets/SwitchWidget';
 import MetricWidget from '../../../widgets/MetricWidget';
 import ChartWidget from '../../../widgets/ChartWidget';
 
-
 import WidgetConfigModal from '../../dashboard/components/WidgetConfigModal';
 import AddMachineModal from '../../dashboard/components/AddMachineModal';
 import { 
@@ -255,20 +254,12 @@ const Dashboard = () => {
                     <div className="bg-slate-200 dark:bg-slate-700 p-4 rounded-full mb-4">
                         <MapPin size={48} className="text-slate-400 dark:text-slate-500" />
                     </div>
-                    <h2 className="text-xl font-bold text-slate-600 dark:text-slate-300">No Location Selected</h2>
+                    <h2 className="text-xl font-bold text-slate-600 dark:text-slate-300">No Dashboards Yet</h2>
                     <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-md text-center">
                         {locations.length === 0 
                             ? "This tenant has no locations yet. Ask your Administrator to add a Site."
-                            : "Please select a location from the dropdown above to view its dashboard."}
+                            : "Start building your dashboard by adding your first widget."}
                     </p>
-                    {isEditMode && can.editDashboard && locations.length > 0 && (
-                         <button 
-                            onClick={() => setIsMachineModalOpen(true)} 
-                            className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
-                         >
-                            Create First Dashboard
-                         </button>
-                    )}
                     {!can.editDashboard && locations.length > 0 && (
                         <div className="mt-4 flex items-center gap-2 text-sm text-orange-500">
                             <Lock size={16} />

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { useAuth } from '../../auth/context/AuthContext';
-import { useMqtt } from '../../mqtt/context/MqttContext'; // Import MQTT to drive connections
+import { useMqtt } from '../../mqtt/context/MqttContext';
 import { arrayMove } from '@dnd-kit/sortable';
 
 const DashboardContext = createContext();
@@ -12,14 +12,12 @@ const INITIAL_WIDGETS = [];
 
 export const DashboardProvider = ({ children }) => {
   const { userProfile } = useAuth();
-  const { connectToBroker, disconnect } = useMqtt(); // <--- Control MQTT from here
+  const { connectToBroker, disconnect } = useMqtt();
 
-  // 1. TENANT & LOCATION STATE
   const [viewedTenantId, setViewedTenantId] = useState(null);
-  const [locations, setLocations] = useState([]); // List of available locations
-  const [activeLocation, setActiveLocation] = useState(null); // The full location object
+  const [locations, setLocations] = useState([]);
+  const [activeLocation, setActiveLocation] = useState(null);
 
-  // 2. DASHBOARD CONTENT STATE
   const [machines, setMachines] = useState(INITIAL_MACHINES);
   const [widgets, setWidgets] = useState(INITIAL_WIDGETS);
   const [activeMachineId, setActiveMachineId] = useState(null);
@@ -27,14 +25,12 @@ export const DashboardProvider = ({ children }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
 
-  // --- INIT: Set default tenant ---
   useEffect(() => {
     if (userProfile?.tenantId) {
         setViewedTenantId(userProfile.tenantId);
     }
   }, [userProfile]);
 
-  // --- STEP 1: Fetch Locations for Tenant ---
   useEffect(() => {
     if (!viewedTenantId) return;
 
@@ -47,7 +43,6 @@ export const DashboardProvider = ({ children }) => {
             const locList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             setLocations(locList);
 
-            // Auto-select first location if none active
             if (locList.length > 0) {
                 setActiveLocation(locList[0]);
             } else {
@@ -64,41 +59,54 @@ export const DashboardProvider = ({ children }) => {
     fetchLocations();
   }, [viewedTenantId]);
 
-  // --- STEP 2: Sync Dashboard & Connect MQTT for Active Location ---
   useEffect(() => {
     if (!viewedTenantId || !activeLocation) {
         setMachines([]); 
-        disconnect(); // No location = No MQTT
+        disconnect();
         return;
     }
 
     setLoadingData(true);
     console.log(`📍 Loading Location: ${activeLocation.name}`);
 
-    // A. Connect MQTT (If config exists)
     if (activeLocation.mqtt_config) {
         connectToBroker(activeLocation.mqtt_config);
     } else {
         disconnect();
     }
 
-    // B. Real-time Dashboard Sync (Firestore)
     const docRef = doc(db, "tenants", viewedTenantId, "locations", activeLocation.id);
 
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    const unsubscribe = onSnapshot(docRef, async (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         const layout = data.layout || {};
 
-        setMachines(layout.machines || []);
+        let machineList = layout.machines || [];
+        
+        if (machineList.length === 0) {
+          const defaultMachine = {
+            id: `m-${Date.now()}`,
+            name: "General"
+          };
+          machineList = [defaultMachine];
+          
+          await setDoc(docRef, {
+            layout: { 
+              machines: machineList, 
+              widgets: [] 
+            },
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+
+        setMachines(machineList);
         setWidgets(layout.widgets || []);
         
-        // Smart Tab Selection
         setActiveMachineId(prev => {
-            const list = layout.machines || [];
-            if (list.length === 0) return null;
-            const exists = list.find(m => m.id === prev);
-            return exists ? prev : list[0].id;
+            if (machineList.length === 0) return null;
+            const exists = machineList.find(m => m.id === prev);
+            return exists ? prev : machineList[0].id;
         });
       }
       setLoadingData(false);
@@ -107,7 +115,6 @@ export const DashboardProvider = ({ children }) => {
     return () => unsubscribe();
   }, [viewedTenantId, activeLocation]); 
 
-  // --- SAVE HELPER ---
   const saveLayout = async (newMachines, newWidgets) => {
     if (!viewedTenantId || !activeLocation) return;
     try {
@@ -121,7 +128,6 @@ export const DashboardProvider = ({ children }) => {
     }
   };
 
-  // --- ACTIONS ---
   const switchTenant = (id) => {
       setViewedTenantId(id);
       setActiveLocation(null); 
@@ -179,7 +185,6 @@ export const DashboardProvider = ({ children }) => {
       if(data.machines) setMachines(data.machines);
       if(data.widgets) setWidgets(data.widgets);
       
-      // Update broker config if present in JSON import
       if(data.mqtt_config && activeLocation) {
            const docRef = doc(db, "tenants", viewedTenantId, "locations", activeLocation.id);
            setDoc(docRef, { mqtt_config: data.mqtt_config }, { merge: true });
@@ -196,8 +201,7 @@ export const DashboardProvider = ({ children }) => {
       widgets, addWidget, removeWidget, reorderWidgets, addMachine, removeMachine,
       loadProfile, loadingData,
       viewedTenantId, switchTenant,
-      // LOCATION EXPORTS
-      locations, activeLocation, switchLocation ,updateWidget
+      locations, activeLocation, switchLocation, updateWidget
     }}>
       {children}
     </DashboardContext.Provider>
