@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // <--- 1. Importar Hook
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../../auth/context/AuthContext';
 import { usePermissions } from '../../../shared/hooks/usePermissions';
@@ -12,15 +13,16 @@ import ChartWidget from '../../../widgets/ChartWidget';
 
 import WidgetConfigModal from '../../dashboard/components/WidgetConfigModal';
 import AddMachineModal from '../../dashboard/components/AddMachineModal';
+import WidgetCustomizerRouter from '../customizers/WidgetCustomizerRouter';
 import { 
     PlusCircle, Plus, X, Building, ChevronDown, Loader2, 
-    MapPin, AlertCircle, Lock 
+    MapPin, AlertCircle, Lock, Settings // <--- 2. Importar Icono
 } from 'lucide-react';
 import { DndContext, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 
-const WidgetFactory = ({ widget, onEdit }) => {
-    const commonProps = { ...widget, onEdit };
+const WidgetFactory = ({ widget, onEdit, onCustomize }) => {
+    const commonProps = { ...widget, onEdit, onCustomize };
     
     switch (widget.type) {
         case 'gauge': return <GaugeWidget {...commonProps} />;
@@ -32,6 +34,7 @@ const WidgetFactory = ({ widget, onEdit }) => {
 };
 
 const Dashboard = () => {
+    const navigate = useNavigate(); // <--- 3. Inicializar Hook
     const {
         widgets, isEditMode, addWidget, updateWidget,
         machines, activeMachineId, setActiveMachineId, addMachine, removeMachine,
@@ -44,7 +47,9 @@ const Dashboard = () => {
     
     const [isWidgetModalOpen, setIsWidgetModalOpen] = useState(false);
     const [isMachineModalOpen, setIsMachineModalOpen] = useState(false);
+    const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
     const [editingWidget, setEditingWidget] = useState(null);
+    const [customizingWidget, setCustomizingWidget] = useState(null);
     const [availableTenants, setAvailableTenants] = useState([]);
 
     const sensors = useSensors(
@@ -67,11 +72,11 @@ const Dashboard = () => {
         }
     }, [isSuperAdmin]);
 
+    // ... (resto de funciones handleDragEnd, handleEditWidget, etc. se mantienen igual)
     const currentWidgets = widgets.filter(w => w.machineId === activeMachineId);
-
+    
     const handleDragEnd = (event) => {
         if (!can.editDashboard) return;
-        
         const { active, over } = event;
         if (active.id !== over.id) {
             const oldIndex = widgets.findIndex((w) => w.id === active.id);
@@ -80,51 +85,59 @@ const Dashboard = () => {
         }
     };
 
-    const handleEditWidget = (widget) => {
-        setEditingWidget(widget);
-        setIsWidgetModalOpen(true);
-    };
-
-    const handleSaveWidget = (widgetData) => {
-        if (editingWidget) {
-            updateWidget(widgetData);
-        } else {
-            addWidget(widgetData);
-        }
-    };
-
-    const handleCloseModal = () => {
-        setIsWidgetModalOpen(false);
-        setEditingWidget(null);
-    };
+    const handleEditWidget = (widget) => { setEditingWidget(widget); setIsWidgetModalOpen(true); };
+    const handleCustomizeWidget = (widget) => { setCustomizingWidget(widget); setIsCustomizerOpen(true); };
+    const handleSaveWidget = (widgetData) => { editingWidget ? updateWidget(widgetData) : addWidget(widgetData); };
+    const handleSaveCustomizer = (widgetData) => { updateWidget(widgetData); };
+    const handleCloseModal = () => { setIsWidgetModalOpen(false); setEditingWidget(null); };
+    const handleCloseCustomizer = () => { setIsCustomizerOpen(false); setCustomizingWidget(null); };
 
     return (
         <div className="max-w-7xl mx-auto pb-20">
             
+            {/* --- SUPER ADMIN BAR --- */}
             {isSuperAdmin && (
                 <div className="mb-4 bg-slate-800 text-white p-4 rounded-xl flex items-center justify-between shadow-lg">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-indigo-500 rounded-lg">
                             <Building size={20} />
                         </div>
-                        <div>
-                            <p className="text-xs text-indigo-200 font-bold uppercase tracking-wider">Super Admin Mode</p>
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm opacity-70">Viewing:</span>
-                                <div className="relative group">
-                                    <select 
-                                        value={viewedTenantId || ''}
-                                        onChange={(e) => switchTenant(e.target.value)}
-                                        className="appearance-none bg-slate-900 border border-slate-600 text-white pl-3 pr-8 py-1 rounded cursor-pointer hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
-                                    >
-                                        <option value="" disabled>Select Tenant</option>
-                                        {availableTenants.map(t => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={14} className="absolute right-2 top-2 pointer-events-none text-slate-400" />
+                        <div className="flex items-center gap-4">
+                            <div>
+                                <p className="text-xs text-indigo-200 font-bold uppercase tracking-wider">Super Admin Mode</p>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm opacity-70">Viewing:</span>
+                                    <div className="relative group">
+                                        <select 
+                                            value={viewedTenantId || ''}
+                                            onChange={(e) => switchTenant(e.target.value)}
+                                            className="appearance-none bg-slate-900 border border-slate-600 text-white pl-3 pr-8 py-1 rounded cursor-pointer hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
+                                        >
+                                            <option value="" disabled>Select Tenant</option>
+                                            {availableTenants.map(t => (
+                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-2 top-2 pointer-events-none text-slate-400" />
+                                    </div>
                                 </div>
                             </div>
+
+                            {/* --- 4. BOTÓN DE PERFIL DEL TENANT --- */}
+                            {viewedTenantId && (
+                                <div className="h-8 w-px bg-slate-600 mx-1"></div> // Separador
+                            )}
+                            
+                            {viewedTenantId && (
+                                <button 
+                                    onClick={() => navigate(`/app/tenants/${viewedTenantId}`)}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-indigo-200 hover:text-white rounded-lg transition-all text-xs font-bold border border-slate-600 hover:border-slate-500"
+                                    title="Go to Tenant Configuration"
+                                >
+                                    <Settings size={16} />
+                                    <span className="hidden sm:inline">Configure</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                     {loadingData && (
@@ -135,6 +148,7 @@ const Dashboard = () => {
                 </div>
             )}
 
+            {/* --- LOCATION BAR --- */}
             {locations.length > 0 && (
                 <div className="mb-6 flex items-center gap-4 bg-white dark:bg-slate-800 p-2 pl-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                     <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
@@ -170,6 +184,7 @@ const Dashboard = () => {
                 </div>
             )}
 
+            {/* --- DASHBOARD CONTENT --- */}
             {machines.length > 0 ? (
                 <>
                 <div className="mb-8 border-b border-slate-200 dark:border-slate-700">
@@ -227,6 +242,7 @@ const Dashboard = () => {
                                     <WidgetFactory 
                                         widget={widget} 
                                         onEdit={() => handleEditWidget(widget)}
+                                        onCustomize={() => handleCustomizeWidget(widget)}
                                     />
                                 </div>
                             ))}
@@ -282,6 +298,12 @@ const Dashboard = () => {
                         isOpen={isMachineModalOpen} 
                         onClose={() => setIsMachineModalOpen(false)} 
                         onSave={addMachine} 
+                    />
+                    <WidgetCustomizerRouter
+                        isOpen={isCustomizerOpen}
+                        onClose={handleCloseCustomizer}
+                        onSave={handleSaveCustomizer}
+                        widget={customizingWidget}
                     />
                 </>
             )}

@@ -14,10 +14,22 @@ const ICON_MAP = {
 
 const metricDataStore = {};
 
-const MetricWidget = ({ id, title, topic, dataKey, unit = '', color = 'blue', iconKey = 'activity', onEdit }) => {
+const MetricWidget = ({ id, title, topic, dataKey, unit = '', color = 'blue', iconKey = 'activity', customConfig, onEdit, onCustomize }) => {
   const [value, setValue] = useState(() => metricDataStore[id] || '--');
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
+  
+  // Advanced Config State
+  const [advConfig, setAdvConfig] = useState({});
+
+  useEffect(() => {
+      if (customConfig) {
+        try {
+          const parsed = typeof customConfig === 'string' ? JSON.parse(customConfig) : customConfig;
+          setAdvConfig(parsed);
+        } catch(e) {}
+      }
+  }, [customConfig]);
   
   const { subscribeToTopic, lastMessage } = useMqtt();
 
@@ -44,6 +56,12 @@ const MetricWidget = ({ id, title, topic, dataKey, unit = '', color = 'blue', ic
             extractedValue = extractedValue === 1 ? 'ON' : 'OFF';
           }
         }
+
+        // Data Transformation (Basic)
+        if (advConfig?.dataTransformation?.enabled && typeof extractedValue === 'number') {
+            const { multiplier = 1, offset = 0, decimals = 2 } = advConfig.dataTransformation;
+            extractedValue = ((extractedValue * multiplier) + offset).toFixed(decimals);
+        }
         
         if (extractedValue !== undefined) {
           setValue(extractedValue);
@@ -51,22 +69,35 @@ const MetricWidget = ({ id, title, topic, dataKey, unit = '', color = 'blue', ic
           metricDataStore[id] = extractedValue;
         }
       } catch (e) {
+        // Fallback
         const rawValue = lastMessage.payload.toString();
-        if (rawValue === '0' || rawValue === '1') {
-          const parsedValue = rawValue === '1' ? 'ON' : 'OFF';
-          setValue(parsedValue);
-          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-          metricDataStore[id] = parsedValue;
-        } else if (!isNaN(rawValue)) {
-          setValue(parseFloat(rawValue));
-          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-          metricDataStore[id] = parseFloat(rawValue);
-        }
+        setValue(rawValue);
+        setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
       }
     }
-  }, [lastMessage, topic, dataKey, id]);
+  }, [lastMessage, topic, dataKey, id, advConfig]);
 
   const Icon = ICON_MAP[iconKey] || Activity;
+
+  // Logic for Conditional Formatting (Override color props)
+  let displayColor = color;
+  let textColorClass = ''; // For custom overrides
+  
+  if (advConfig?.conditionalFormatting?.enabled && typeof value === 'number') {
+      const rule = advConfig.conditionalFormatting.rules.find(r => {
+          switch(r.condition) {
+              case '>': return value > r.value;
+              case '<': return value < r.value;
+              case '>=': return value >= r.value;
+              case '<=': return value <= r.value;
+              case '===': return value === r.value;
+              default: return false;
+          }
+      });
+      if (rule) {
+          displayColor = rule.color; // e.g. "red", "green"
+      }
+  }
 
   const colorClasses = {
     blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
@@ -77,18 +108,27 @@ const MetricWidget = ({ id, title, topic, dataKey, unit = '', color = 'blue', ic
   };
 
   return (
-    <BaseWidget id={id} title={title} lastUpdated={lastUpdated} onEdit={onEdit}>
+    <BaseWidget 
+      id={id} 
+      title={title} 
+      lastUpdated={lastUpdated} 
+      onEdit={onEdit} 
+      onCustomize={onCustomize}
+    >
       <div className="flex items-center justify-between h-full py-2">
         <div>
           <div className="text-4xl font-bold text-slate-700 dark:text-white tracking-tight">
-            {value} <span className="text-lg text-slate-400 font-medium ml-1">{unit}</span>
+             {advConfig?.dataTransformation?.prefix || ''}
+             {value} 
+             {advConfig?.dataTransformation?.suffix || ''}
+             <span className="text-lg text-slate-400 font-medium ml-1">{unit}</span>
           </div>
           <p className="text-xs text-slate-400 mt-2 font-mono">
             {topic.split('/').pop()}
           </p>
         </div>
         
-        <div className={`p-4 rounded-2xl ${colorClasses[color] || colorClasses.blue}`}>
+        <div className={`p-4 rounded-2xl ${colorClasses[displayColor] || colorClasses.blue}`}>
           <Icon size={32} />
         </div>
       </div>

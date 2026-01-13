@@ -6,10 +6,22 @@ import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
 
 const gaugeDataStore = {};
 
-const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100, onEdit }) => {
+const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100, customConfig, onEdit, onCustomize }) => {
   const [value, setValue] = useState(() => gaugeDataStore[id] || 0);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
+  
+  // Configuración avanzada
+  const [advConfig, setAdvConfig] = useState({});
+
+  useEffect(() => {
+    if (customConfig) {
+      try {
+        const parsed = typeof customConfig === 'string' ? JSON.parse(customConfig) : customConfig;
+        setAdvConfig(parsed);
+      } catch(e) {}
+    }
+  }, [customConfig]);
   
   const { subscribeToTopic, lastMessage } = useMqtt();
 
@@ -33,12 +45,21 @@ const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100, onEdit }) 
           extractedValue = Number(payload.value);
         }
         
+        // Data Transformation Logic
+        if (advConfig?.dataTransformation?.enabled) {
+             const { multiplier = 1, offset = 0 } = advConfig.dataTransformation;
+             if (!isNaN(extractedValue)) {
+                 extractedValue = (extractedValue * multiplier) + offset;
+             }
+        }
+        
         if (extractedValue !== undefined && !isNaN(extractedValue)) {
           setValue(extractedValue);
           setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
           gaugeDataStore[id] = extractedValue;
         }
       } catch (e) {
+        // Fallback simple parsing
         const rawValue = lastMessage.payload.toString();
         if (!isNaN(rawValue)) {
           const numValue = parseFloat(rawValue);
@@ -48,12 +69,29 @@ const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100, onEdit }) 
         }
       }
     }
-  }, [lastMessage, topic, dataKey, id]);
+  }, [lastMessage, topic, dataKey, id, advConfig]);
 
+  // Determine Color based on Advanced Zones
+  const determineColor = (val) => {
+      if (advConfig?.colorZones?.enabled && advConfig.colorZones.zones) {
+          const match = advConfig.colorZones.zones.find(z => val >= z.min && val <= z.max);
+          if (match) return match.color;
+      }
+      return '#0ea5e9'; // Default Blue
+  };
+
+  const currentColor = determineColor(value);
   const gaugeData = [{ value: value }, { value: Math.max(max - value, 0) }];
 
   return (
-    <BaseWidget id={id} title={title} icon={GaugeIcon} lastUpdated={lastUpdated} onEdit={onEdit}>
+    <BaseWidget 
+      id={id} 
+      title={title} 
+      icon={GaugeIcon} 
+      lastUpdated={lastUpdated} 
+      onEdit={onEdit} 
+      onCustomize={onCustomize}
+    >
       <div className="relative h-40 flex items-end justify-center mt-2">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -66,13 +104,18 @@ const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100, onEdit }) 
               dataKey="value"
               stroke="none"
             >
-              <Cell fill="#0ea5e9" />
+              <Cell fill={currentColor} />
               <Cell fill="#f1f5f9" className="dark:fill-slate-700" />
             </Pie>
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute bottom-0 text-center mb-2">
-          <span className="text-3xl font-bold text-slate-700 dark:text-white">{value.toFixed(1)}</span>
+          <span className="text-3xl font-bold text-slate-700 dark:text-white" style={{ color: currentColor }}>
+            {value.toFixed(1)}
+          </span>
+          {advConfig?.markers?.showLabels && (
+             <p className="text-[10px] text-slate-400">{title}</p>
+          )}
         </div>
       </div>
       <div className="flex justify-between text-xs text-slate-400 px-4 mt-2">

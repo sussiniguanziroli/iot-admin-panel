@@ -1,11 +1,11 @@
 import React from 'react';
-import { Trash2, Clock, Settings } from 'lucide-react';
+import { Trash2, Clock, Settings, Sliders } from 'lucide-react';
 import { useDashboard } from '../../src/features/dashboard/context/DashboardContext';
 import { usePermissions } from '../shared/hooks/usePermissions';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const BaseWidget = ({ id, title, icon: Icon, lastUpdated, children, onEdit }) => {
+const BaseWidget = ({ id, title, icon: Icon, lastUpdated, children, onEdit, onCustomize }) => {
   const { isEditMode, removeWidget } = useDashboard();
   const { can } = usePermissions();
 
@@ -49,6 +49,21 @@ const BaseWidget = ({ id, title, icon: Icon, lastUpdated, children, onEdit }) =>
         
         {isEditMode && can.editDashboard && (
           <div className="flex items-center gap-2">
+            {/* Botón de Personalización Avanzada (Sliders) */}
+            {onCustomize && (
+               <button 
+               onClick={(e) => {
+                 e.stopPropagation();
+                 onCustomize();
+               }}
+               className="p-1.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-600 hover:text-white transition-colors cursor-pointer"
+               title="Advanced Customization"
+             >
+               <Sliders size={16} />
+             </button>
+            )}
+
+            {/* Botón de Configuración Básica (Settings) */}
             <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -59,6 +74,8 @@ const BaseWidget = ({ id, title, icon: Icon, lastUpdated, children, onEdit }) =>
             >
               <Settings size={16} />
             </button>
+
+            {/* Botón de Eliminar (Trash) */}
             <button 
               onClick={(e) => {
                 e.stopPropagation();

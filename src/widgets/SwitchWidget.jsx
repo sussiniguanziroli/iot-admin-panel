@@ -8,18 +8,34 @@ import Swal from 'sweetalert2';
 
 const switchStateStore = {};
 
-// 1. AGREGAMOS dataKey A LOS PROPS PARA SABER QUÉ LEER (relay1)
-const SwitchWidget = ({ id, title, topic, commandTopic, dataKey = 'relay1', onEdit }) => {
+const SwitchWidget = ({ 
+  id, title, topic, commandTopic, dataKey = 'relay1', 
+  commandFormat = 'text', onCommand = 'ON', offCommand = 'OFF', 
+  onPayloadJSON, offPayloadJSON, customConfig, onEdit, onCustomize 
+}) => {
   const { can } = usePermissions();
   const [isOn, setIsOn] = useState(() => switchStateStore[id] || false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   
+  // Parsear config avanzada si existe para lógica UI
+  const [advancedSettings, setAdvancedSettings] = useState({});
+
+  useEffect(() => {
+    if (customConfig) {
+      try {
+        const parsed = typeof customConfig === 'string' ? JSON.parse(customConfig) : customConfig;
+        setAdvancedSettings(parsed);
+      } catch(e) { console.error("Error parsing advanced config", e); }
+    }
+  }, [customConfig]);
+  
   const { subscribeToTopic, publishMessage, lastMessage } = useMqtt();
 
- useEffect(() => {
-    if (topic) {
+  useEffect(() => {
+    if (topic && !hasSubscribed.current) {
       subscribeToTopic(topic);
+      hasSubscribed.current = true;
     }
   }, [topic, subscribeToTopic]);
 
@@ -28,20 +44,20 @@ const SwitchWidget = ({ id, title, topic, commandTopic, dataKey = 'relay1', onEd
       try {
         const payload = JSON.parse(lastMessage.payload);
         
-        // 1. Buscamos la key que configuraste en el modal (será "status")
         let serverValue = payload[dataKey]; 
         
-        // 2. Si no la encuentra, buscamos "value" o "estado" por las dudas
-        if (serverValue === undefined) serverValue = payload.value || payload.estado;
+        if (serverValue === undefined) {
+          serverValue = payload.value || payload.estado || payload.status;
+        }
 
         if (serverValue !== undefined) {
-          // 3. Normalizamos el valor para entender ON, OFF, 1, 0, true, false
           const valString = String(serverValue).toUpperCase();
           const newState = (
-              valString === 'ON' || 
-              valString === '1' || 
-              valString === 'TRUE' ||
-              valString === 'HIGH'  // A veces mandan HIGH
+            valString === 'ON' || 
+            valString === '1' || 
+            valString === 'TRUE' ||
+            valString === 'HIGH' ||
+            valString === 'MARCHA'
           );
           
           setIsOn(newState);
@@ -49,13 +65,12 @@ const SwitchWidget = ({ id, title, topic, commandTopic, dataKey = 'relay1', onEd
           switchStateStore[id] = newState;
         }
       } catch (e) {
-        // Fallback para sistemas viejos que mandan texto plano
         const rawState = lastMessage.payload.toString().toUpperCase();
-        if (rawState === 'ON' || rawState === 'MARCHA' || rawState === '1') {
+        if (rawState === 'ON' || rawState === 'MARCHA' || rawState === '1' || rawState === 'TRUE') {
           setIsOn(true);
           switchStateStore[id] = true;
           setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-        } else if (rawState === 'OFF' || rawState === 'PARADA' || rawState === '0') {
+        } else if (rawState === 'OFF' || rawState === 'PARADA' || rawState === '0' || rawState === 'FALSE') {
           setIsOn(false);
           switchStateStore[id] = false;
           setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
@@ -66,37 +81,94 @@ const SwitchWidget = ({ id, title, topic, commandTopic, dataKey = 'relay1', onEd
 
   const toggle = async () => {
     if (!can.controlEquipment) {
-      toast.error('No tienes permisos', { position: 'top-right' });
+      toast.error('You do not have permission to control equipment', {
+        position: 'top-right',
+        autoClose: 3000
+      });
       return;
     }
 
-    // El manual dice: enviar "ON" o "OFF" (Texto plano)
-    const targetValue = isOn ? "OFF" : "ON"; 
+    // Check Interlocks (from advanced settings)
+    if (advancedSettings?.interlocks?.enabled && !isOn) {
+       // Aquí iría lógica compleja de interbloqueos si tuvieras acceso al estado global
+       // Por ahora es un placeholder para cuando conectes el estado global de máquinas
+    }
+
+    // Check Confirmation Mode
+    if (advancedSettings?.confirmationMode?.enabled) {
+       // Podrías cambiar el tipo de alerta basado en esto
+    }
+
+    let payload;
+    let payloadDescription;
+
+    if (commandFormat === 'json') {
+      payload = isOn ? offPayloadJSON : onPayloadJSON;
+      payloadDescription = JSON.stringify(payload);
+    } else if (commandFormat === 'number') {
+      payload = isOn ? offCommand : onCommand;
+      payloadDescription = payload;
+    } else {
+      payload = isOn ? offCommand : onCommand;
+      payloadDescription = payload;
+    }
+
+    const actionText = isOn ? 'TURN OFF' : 'TURN ON';
     
-    // Alerta visual para ti
     const result = await Swal.fire({
-      title: `¿${targetValue === 'ON' ? 'ENCENDER' : 'APAGAR'}?`,
-      text: `Enviando orden a: .../in/r1`,
-      icon: 'question',
+      title: `${actionText}?`,
+      html: `
+        <div class="text-left space-y-2">
+          <p class="text-slate-600">You are about to <strong>${actionText.toLowerCase()}</strong> this equipment.</p>
+          <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg mt-3 text-sm space-y-1">
+            <p class="font-mono text-xs"><strong>Topic:</strong> ${commandTopic}</p>
+            <p class="font-mono text-xs"><strong>Payload:</strong> <code class="bg-slate-200 dark:bg-slate-900 px-1 py-0.5 rounded">${payloadDescription}</code></p>
+          </div>
+        </div>
+      `,
+      icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: isOn ? '#ef4444' : '#10b981',
-      confirmButtonText: 'Sí, ejecutar'
+      cancelButtonColor: '#64748b',
+      confirmButtonText: `Yes, ${actionText.toLowerCase()}!`,
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
     });
 
     if (result.isConfirmed) {
       try {
-        // Publicamos el texto directo al topic configurado (.../in/r1)
-        publishMessage(commandTopic, targetValue);
+        const messageToSend = typeof payload === 'object' ? JSON.stringify(payload) : String(payload);
         
-        toast.success(`Orden enviada: ${targetValue}`);
+        console.log(`[SwitchWidget] Publishing to: ${commandTopic}`);
+        console.log(`[SwitchWidget] Payload:`, messageToSend);
+        
+        publishMessage(commandTopic, messageToSend);
+        
+        // Feedback visual inmediato si está configurado
+        if (advancedSettings?.feedback?.visualFeedback) {
+             // Podrías forzar un estado optimista aquí si quisieras
+        }
+
+        toast.success(`Command sent: ${payloadDescription}`, {
+          position: 'bottom-right',
+          autoClose: 2000
+        });
       } catch (error) {
-        console.error(error);
-        toast.error('Error al enviar');
+        console.error('Error sending command:', error);
+        toast.error('Failed to send command', { position: 'top-right' });
       }
     }
   };
+
   return (
-    <BaseWidget id={id} title={title} icon={ToggleLeft} lastUpdated={lastUpdated} onEdit={onEdit}>
+    <BaseWidget 
+      id={id} 
+      title={title} 
+      icon={ToggleLeft} 
+      lastUpdated={lastUpdated} 
+      onEdit={onEdit} 
+      onCustomize={onCustomize}
+    >
       <div className="flex flex-col items-center justify-center py-6">
         <button
           onClick={toggle}
@@ -117,11 +189,17 @@ const SwitchWidget = ({ id, title, topic, commandTopic, dataKey = 'relay1', onEd
         <span className={`mt-3 text-sm font-bold tracking-wide ${
           isOn ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600'
         }`}>
-          {isOn ? 'ENCENDIDO' : 'APAGADO'}
+          {isOn ? 'ON' : 'OFF'}
         </span>
+        
+        {/* State Tracking Display (from Advanced Config) */}
+        {advancedSettings?.stateTracking?.enabled && advancedSettings?.stateTracking?.showLastChanged && lastUpdated && (
+           <span className="text-[10px] text-slate-400 mt-1">Changed: {lastUpdated}</span>
+        )}
+
         {!can.controlEquipment && (
           <span className="mt-2 text-xs text-orange-500 dark:text-orange-400 font-medium flex items-center gap-1">
-            <Lock size={10} /> Solo Lectura
+            <Lock size={10} /> Read Only
           </span>
         )}
       </div>
