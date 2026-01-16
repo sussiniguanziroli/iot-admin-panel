@@ -5,20 +5,21 @@ import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
 import { usePermissions } from '../shared/hooks/usePermissions';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
+import { parsePayload } from '../shared/utils/payloadParser';
 
 const switchStateStore = {};
 
 const SwitchWidget = ({ 
   id, title, topic, commandTopic, dataKey = 'relay1', 
   commandFormat = 'text', onCommand = 'ON', offCommand = 'OFF', 
-  onPayloadJSON, offPayloadJSON, customConfig, onEdit, onCustomize 
+  onPayloadJSON, offPayloadJSON, customConfig, onEdit, onCustomize,
+  payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
 }) => {
   const { can } = usePermissions();
   const [isOn, setIsOn] = useState(() => switchStateStore[id] || false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   
-  // Parsear config avanzada si existe para lógica UI
   const [advancedSettings, setAdvancedSettings] = useState({});
 
   useEffect(() => {
@@ -26,7 +27,9 @@ const SwitchWidget = ({
       try {
         const parsed = typeof customConfig === 'string' ? JSON.parse(customConfig) : customConfig;
         setAdvancedSettings(parsed);
-      } catch(e) { console.error("Error parsing advanced config", e); }
+      } catch(e) { 
+        console.error('[SwitchWidget] Error parsing advanced config:', e);
+      }
     }
   }, [customConfig]);
   
@@ -42,22 +45,36 @@ const SwitchWidget = ({
   useEffect(() => {
     if (lastMessage && lastMessage.topic === topic) {
       try {
-        const payload = JSON.parse(lastMessage.payload);
-        
-        let serverValue = payload[dataKey]; 
-        
-        if (serverValue === undefined) {
-          serverValue = payload.value || payload.estado || payload.status;
+        let serverValue = parsePayload(lastMessage.payload, {
+          payloadParsingMode: payloadParsingMode || 'simple',
+          dataKey: dataKey || 'relay1',
+          jsonPath: jsonPath || '',
+          jsParserFunction: jsParserFunction || '',
+          fallbackValue: null
+        });
+
+        if (serverValue === null || serverValue === undefined) {
+          try {
+            const payload = JSON.parse(lastMessage.payload);
+            serverValue = payload[dataKey];
+            
+            if (serverValue === undefined) {
+              serverValue = payload.value || payload.estado || payload.status;
+            }
+          } catch (e) {
+            serverValue = lastMessage.payload.toString();
+          }
         }
 
-        if (serverValue !== undefined) {
+        if (serverValue !== undefined && serverValue !== null) {
           const valString = String(serverValue).toUpperCase();
           const newState = (
             valString === 'ON' || 
             valString === '1' || 
             valString === 'TRUE' ||
             valString === 'HIGH' ||
-            valString === 'MARCHA'
+            valString === 'MARCHA' ||
+            valString === 'ACTIVE'
           );
           
           setIsOn(newState);
@@ -65,6 +82,7 @@ const SwitchWidget = ({
           switchStateStore[id] = newState;
         }
       } catch (e) {
+        console.error('[SwitchWidget] Error processing message:', e);
         const rawState = lastMessage.payload.toString().toUpperCase();
         if (rawState === 'ON' || rawState === 'MARCHA' || rawState === '1' || rawState === 'TRUE') {
           setIsOn(true);
@@ -77,7 +95,7 @@ const SwitchWidget = ({
         }
       }
     }
-  }, [lastMessage, topic, id, dataKey]);
+  }, [lastMessage, topic, id, dataKey, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue]);
 
   const toggle = async () => {
     if (!can.controlEquipment) {
@@ -88,19 +106,11 @@ const SwitchWidget = ({
       return;
     }
 
-    // Check Interlocks (from advanced settings)
-    if (advancedSettings?.interlocks?.enabled && !isOn) {
-       // Aquí iría lógica compleja de interbloqueos si tuvieras acceso al estado global
-       // Por ahora es un placeholder para cuando conectes el estado global de máquinas
-    }
-
-    // Check Confirmation Mode
-    if (advancedSettings?.confirmationMode?.enabled) {
-       // Podrías cambiar el tipo de alerta basado en esto
-    }
-
     let payload;
     let payloadDescription;
+
+    if (advancedSettings?.interlocks?.enabled && !isOn) {
+    }
 
     if (commandFormat === 'json') {
       payload = isOn ? offPayloadJSON : onPayloadJSON;
@@ -144,9 +154,7 @@ const SwitchWidget = ({
         
         publishMessage(commandTopic, messageToSend);
         
-        // Feedback visual inmediato si está configurado
         if (advancedSettings?.feedback?.visualFeedback) {
-             // Podrías forzar un estado optimista aquí si quisieras
         }
 
         toast.success(`Command sent: ${payloadDescription}`, {
@@ -192,7 +200,6 @@ const SwitchWidget = ({
           {isOn ? 'ON' : 'OFF'}
         </span>
         
-        {/* State Tracking Display (from Advanced Config) */}
         {advancedSettings?.stateTracking?.enabled && advancedSettings?.stateTracking?.showLastChanged && lastUpdated && (
            <span className="text-[10px] text-slate-400 mt-1">Changed: {lastUpdated}</span>
         )}

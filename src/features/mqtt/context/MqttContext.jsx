@@ -8,7 +8,6 @@ export const MqttProvider = ({ children }) => {
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [lastMessage, setLastMessage] = useState(null);
   
-  // Track active config to avoid re-connecting to same broker
   const [activeConfig, setActiveConfig] = useState(null);
 
   const connectToBroker = useCallback((mqttConfig) => {
@@ -20,7 +19,6 @@ export const MqttProvider = ({ children }) => {
     if (activeConfig && 
         activeConfig.host === mqttConfig.host && 
         activeConfig.username === mqttConfig.username) {
-        // Already connected to this broker, no action needed
         return; 
     }
 
@@ -79,7 +77,25 @@ export const MqttProvider = ({ children }) => {
   const subscribeToTopic = (topic) => {
     if (client?.connected) {
       client.subscribe(topic, (err) => {
-        if (err) console.error(`Error subscribing to ${topic}:`, err);
+        if (err) {
+          console.error(`Error subscribing to ${topic}:`, err);
+        } else {
+          console.log(`✅ Subscribed to: ${topic}`);
+        }
+      });
+    } else {
+      console.warn('⚠️ Cannot subscribe: Client not connected');
+    }
+  };
+
+  const unsubscribeFromTopic = (topic) => {
+    if (client?.connected) {
+      client.unsubscribe(topic, (err) => {
+        if (err) {
+          console.error(`Error unsubscribing from ${topic}:`, err);
+        } else {
+          console.log(`✅ Unsubscribed from: ${topic}`);
+        }
       });
     }
   };
@@ -87,6 +103,9 @@ export const MqttProvider = ({ children }) => {
   const publishMessage = (topic, message) => {
     if (client?.connected) {
       client.publish(topic, message);
+      console.log(`📤 Published to ${topic}:`, message);
+    } else {
+      console.warn('⚠️ Cannot publish: Client not connected');
     }
   };
 
@@ -95,9 +114,10 @@ export const MqttProvider = ({ children }) => {
       client, 
       connectionStatus, 
       lastMessage, 
-      subscribeToTopic, 
+      subscribeToTopic,
+      unsubscribeFromTopic,
       publishMessage,
-      connectToBroker, // <--- EXPOSED
+      connectToBroker,
       disconnect,   
       activeConfig        
     }}>

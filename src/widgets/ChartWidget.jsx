@@ -3,16 +3,20 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Activity } from 'lucide-react';
 import BaseWidget from './BaseWidget';
 import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
+import { parsePayload } from '../shared/utils/payloadParser';
 
 const HEIGHT_MAP = { sm: 'h-40', md: 'h-64', lg: 'h-96', xl: 'h-[500px]' };
 const chartDataStore = {};
 
-const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'md', min, max, customConfig, onEdit, onCustomize }) => {
+const ChartWidget = ({ 
+  id, title, topic, dataKey, color = '#0ea5e9', height = 'md', min, max, 
+  customConfig, onEdit, onCustomize,
+  payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
+}) => {
   const [history, setHistory] = useState(() => chartDataStore[id] || []);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   
-  // Advanced Config
   const [advConfig, setAdvConfig] = useState({});
 
   useEffect(() => {
@@ -20,7 +24,9 @@ const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'm
         try {
           const parsed = typeof customConfig === 'string' ? JSON.parse(customConfig) : customConfig;
           setAdvConfig(parsed);
-        } catch(e) {}
+        } catch(e) {
+          console.error('[ChartWidget] Error parsing customConfig:', e);
+        }
       }
   }, [customConfig]);
   
@@ -36,18 +42,30 @@ const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'm
   useEffect(() => {
     if (lastMessage && lastMessage.topic === topic) {
       try {
-        const payload = JSON.parse(lastMessage.payload);
-        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        let val = parsePayload(lastMessage.payload, {
+          payloadParsingMode: payloadParsingMode || 'simple',
+          dataKey: dataKey || 'value',
+          jsonPath: jsonPath || '',
+          jsParserFunction: jsParserFunction || '',
+          fallbackValue: null
+        });
 
-        let val;
-        
-        if (payload[dataKey] !== undefined) {
-          val = payload[dataKey];
-        } else if (payload.value !== undefined) {
-          val = payload.value;
+        if (val === null || val === undefined || val === '--') {
+          try {
+            const payload = JSON.parse(lastMessage.payload);
+            if (payload[dataKey] !== undefined) {
+              val = payload[dataKey];
+            } else if (payload.value !== undefined) {
+              val = payload.value;
+            }
+          } catch (e) {
+            console.error('[ChartWidget] Fallback parsing failed:', e);
+            return;
+          }
         }
 
-        if (val !== undefined) {
+        if (val !== null && val !== undefined && !isNaN(val)) {
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
           setLastUpdated(new Date().toLocaleTimeString());
           
           setHistory(prev => {
@@ -59,17 +77,16 @@ const ChartWidget = ({ id, title, topic, dataKey, color = '#0ea5e9', height = 'm
           });
         }
       } catch (e) {
-        console.error('Error parsing in ChartWidget:', e);
+        console.error('[ChartWidget] Error parsing payload:', e);
       }
     }
-  }, [lastMessage, topic, dataKey, height, id, advConfig]);
+  }, [lastMessage, topic, dataKey, height, id, advConfig, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue]);
 
   const yDomain = [
     min !== undefined && min !== '' ? Number(min) : 'auto', 
     max !== undefined && max !== '' ? Number(max) : 'auto'
   ];
 
-  // Estilos avanzados
   const strokeColor = advConfig?.gradientColors?.enabled ? advConfig.gradientColors.topColor : color;
   const strokeWidth = advConfig?.lineStyle?.strokeWidth || 2;
   const curveType = advConfig?.lineStyle?.type || 'monotone';

@@ -3,15 +3,19 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Gauge as GaugeIcon } from 'lucide-react';
 import BaseWidget from './BaseWidget';
 import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
+import { parsePayload } from '../shared/utils/payloadParser';
 
 const gaugeDataStore = {};
 
-const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100, customConfig, onEdit, onCustomize }) => {
+const GaugeWidget = ({ 
+  id, title, topic, dataKey, min = 0, max = 100, 
+  customConfig, onEdit, onCustomize,
+  payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
+}) => {
   const [value, setValue] = useState(() => gaugeDataStore[id] || 0);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   
-  // Configuración avanzada
   const [advConfig, setAdvConfig] = useState({});
 
   useEffect(() => {
@@ -19,7 +23,9 @@ const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100, customConf
       try {
         const parsed = typeof customConfig === 'string' ? JSON.parse(customConfig) : customConfig;
         setAdvConfig(parsed);
-      } catch(e) {}
+      } catch(e) {
+        console.error('[GaugeWidget] Error parsing customConfig:', e);
+      }
     }
   }, [customConfig]);
   
@@ -35,49 +41,54 @@ const GaugeWidget = ({ id, title, topic, dataKey, min = 0, max = 100, customConf
   useEffect(() => {
     if (lastMessage && lastMessage.topic === topic) {
       try {
-        const payload = JSON.parse(lastMessage.payload);
-        
-        let extractedValue;
-        
-        if (payload[dataKey] !== undefined) {
-          extractedValue = Number(payload[dataKey]);
-        } else if (payload.value !== undefined) {
-          extractedValue = Number(payload.value);
+        let extractedValue = parsePayload(lastMessage.payload, {
+          payloadParsingMode: payloadParsingMode || 'simple',
+          dataKey: dataKey || 'value',
+          jsonPath: jsonPath || '',
+          jsParserFunction: jsParserFunction || '',
+          fallbackValue: null
+        });
+
+        if (extractedValue === null || extractedValue === undefined || extractedValue === '--') {
+          try {
+            const payload = JSON.parse(lastMessage.payload);
+            if (payload[dataKey] !== undefined) {
+              extractedValue = Number(payload[dataKey]);
+            } else if (payload.value !== undefined) {
+              extractedValue = Number(payload.value);
+            }
+          } catch (e) {
+            const rawValue = lastMessage.payload.toString();
+            if (!isNaN(rawValue)) {
+              extractedValue = parseFloat(rawValue);
+            }
+          }
         }
         
-        // Data Transformation Logic
-        if (advConfig?.dataTransformation?.enabled) {
-             const { multiplier = 1, offset = 0 } = advConfig.dataTransformation;
-             if (!isNaN(extractedValue)) {
-                 extractedValue = (extractedValue * multiplier) + offset;
-             }
-        }
-        
-        if (extractedValue !== undefined && !isNaN(extractedValue)) {
+        if (extractedValue !== null && extractedValue !== undefined && !isNaN(extractedValue)) {
+          extractedValue = Number(extractedValue);
+
+          if (advConfig?.dataTransformation?.enabled) {
+            const { multiplier = 1, offset = 0 } = advConfig.dataTransformation;
+            extractedValue = (extractedValue * multiplier) + offset;
+          }
+
           setValue(extractedValue);
           setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
           gaugeDataStore[id] = extractedValue;
         }
       } catch (e) {
-        // Fallback simple parsing
-        const rawValue = lastMessage.payload.toString();
-        if (!isNaN(rawValue)) {
-          const numValue = parseFloat(rawValue);
-          setValue(numValue);
-          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-          gaugeDataStore[id] = numValue;
-        }
+        console.error('[GaugeWidget] Error parsing payload:', e);
       }
     }
-  }, [lastMessage, topic, dataKey, id, advConfig]);
+  }, [lastMessage, topic, dataKey, id, advConfig, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue]);
 
-  // Determine Color based on Advanced Zones
   const determineColor = (val) => {
       if (advConfig?.colorZones?.enabled && advConfig.colorZones.zones) {
           const match = advConfig.colorZones.zones.find(z => val >= z.min && val <= z.max);
           if (match) return match.color;
       }
-      return '#0ea5e9'; // Default Blue
+      return '#0ea5e9';
   };
 
   const currentColor = determineColor(value);

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Zap, Clock, Box, Droplets, Thermometer, Activity } from 'lucide-react';
 import BaseWidget from './BaseWidget';
 import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
+import { parsePayload } from '../shared/utils/payloadParser';
 
 const ICON_MAP = {
   zap: Zap,
@@ -14,12 +15,15 @@ const ICON_MAP = {
 
 const metricDataStore = {};
 
-const MetricWidget = ({ id, title, topic, dataKey, unit = '', color = 'blue', iconKey = 'activity', customConfig, onEdit, onCustomize }) => {
+const MetricWidget = ({ 
+  id, title, topic, dataKey, unit = '', color = 'blue', iconKey = 'activity', 
+  customConfig, onEdit, onCustomize,
+  payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
+}) => {
   const [value, setValue] = useState(() => metricDataStore[id] || '--');
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   
-  // Advanced Config State
   const [advConfig, setAdvConfig] = useState({});
 
   useEffect(() => {
@@ -27,7 +31,9 @@ const MetricWidget = ({ id, title, topic, dataKey, unit = '', color = 'blue', ic
         try {
           const parsed = typeof customConfig === 'string' ? JSON.parse(customConfig) : customConfig;
           setAdvConfig(parsed);
-        } catch(e) {}
+        } catch(e) {
+          console.error('[MetricWidget] Error parsing customConfig:', e);
+        }
       }
   }, [customConfig]);
   
@@ -43,45 +49,48 @@ const MetricWidget = ({ id, title, topic, dataKey, unit = '', color = 'blue', ic
   useEffect(() => {
     if (lastMessage && lastMessage.topic === topic) {
       try {
-        const payload = JSON.parse(lastMessage.payload);
-        
-        let extractedValue;
-        
-        if (payload[dataKey] !== undefined) {
-          extractedValue = payload[dataKey];
-        } else if (payload.value !== undefined) {
-          extractedValue = payload.value;
-          
-          if (dataKey === 'value' && (extractedValue === 0 || extractedValue === 1)) {
-            extractedValue = extractedValue === 1 ? 'ON' : 'OFF';
+        let extractedValue = parsePayload(lastMessage.payload, {
+          payloadParsingMode: payloadParsingMode || 'simple',
+          dataKey: dataKey || 'value',
+          jsonPath: jsonPath || '',
+          jsParserFunction: jsParserFunction || '',
+          fallbackValue: fallbackValue || '--'
+        });
+
+        if (extractedValue === '--' || extractedValue === null || extractedValue === undefined) {
+          try {
+            const payload = JSON.parse(lastMessage.payload);
+            if (payload.value !== undefined) {
+              extractedValue = payload.value;
+              if (dataKey === 'value' && (extractedValue === 0 || extractedValue === 1)) {
+                extractedValue = extractedValue === 1 ? 'ON' : 'OFF';
+              }
+            }
+          } catch (e) {
+            extractedValue = lastMessage.payload.toString();
           }
         }
 
-        // Data Transformation (Basic)
         if (advConfig?.dataTransformation?.enabled && typeof extractedValue === 'number') {
-            const { multiplier = 1, offset = 0, decimals = 2 } = advConfig.dataTransformation;
+            const { multiplier = 1, offset = 0, decimals = 2, prefix = '', suffix = '' } = advConfig.dataTransformation;
             extractedValue = ((extractedValue * multiplier) + offset).toFixed(decimals);
         }
         
-        if (extractedValue !== undefined) {
-          setValue(extractedValue);
-          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-          metricDataStore[id] = extractedValue;
-        }
+        setValue(extractedValue);
+        setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
+        metricDataStore[id] = extractedValue;
       } catch (e) {
-        // Fallback
+        console.error('[MetricWidget] Error processing message:', e);
         const rawValue = lastMessage.payload.toString();
         setValue(rawValue);
         setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
       }
     }
-  }, [lastMessage, topic, dataKey, id, advConfig]);
+  }, [lastMessage, topic, dataKey, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue, id, advConfig]);
 
   const Icon = ICON_MAP[iconKey] || Activity;
 
-  // Logic for Conditional Formatting (Override color props)
   let displayColor = color;
-  let textColorClass = ''; // For custom overrides
   
   if (advConfig?.conditionalFormatting?.enabled && typeof value === 'number') {
       const rule = advConfig.conditionalFormatting.rules.find(r => {
@@ -91,11 +100,12 @@ const MetricWidget = ({ id, title, topic, dataKey, unit = '', color = 'blue', ic
               case '>=': return value >= r.value;
               case '<=': return value <= r.value;
               case '===': return value === r.value;
+              case '!==': return value !== r.value;
               default: return false;
           }
       });
       if (rule) {
-          displayColor = rule.color; // e.g. "red", "green"
+          displayColor = rule.color;
       }
   }
 
