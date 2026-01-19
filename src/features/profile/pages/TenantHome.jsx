@@ -70,17 +70,26 @@ const TenantHome = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg">
-                    <CreditCard size={24} />
-                </div>
-                <div>
-                    <h3 className="font-bold text-slate-700 dark:text-white">Plan: Enterprise</h3>
-                    <p className="text-xs text-slate-400">Billing Status</p>
-                </div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg">
+              <CreditCard size={24} />
             </div>
-            <div className="text-2xl font-bold text-slate-800 dark:text-white">Active</div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Next invoice: {stats.nextBill}</p>
+            <div>
+              <h3 className="font-bold text-slate-700 dark:text-white capitalize">
+                {planName} Plan
+              </h3>
+              <p className="text-xs text-slate-400">Subscription</p>
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            {daysLeft} days left
+          </div>
+          <button 
+            onClick={() => navigate('/app/billing')}
+            className="w-full mt-4 py-2 border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-sm font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+          >
+            Manage Billing
+          </button>
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">

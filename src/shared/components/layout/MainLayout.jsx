@@ -1,8 +1,10 @@
+// src/shared/components/layout/MainLayout.jsx
+
 import React, { useState, useRef } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { 
   Menu, X, LayoutDashboard, BarChart2, Users, Edit3, Check, 
-  Wifi, WifiOff, Settings, LogOut, Download, Upload, User, Building2 
+  Wifi, WifiOff, Settings, LogOut, Download, Upload, User, Building2, Shield 
 } from 'lucide-react';
 import { useDashboard } from '../../../features/dashboard/context/DashboardContext';
 import { useMqtt } from '../../../features/mqtt/context/MqttContext';
@@ -47,7 +49,7 @@ const MainLayout = () => {
 
   const handleImportClick = () => {
     if (fileInputRef.current) {
-        fileInputRef.current.click();
+      fileInputRef.current.click();
     }
   };
 
@@ -72,50 +74,47 @@ const MainLayout = () => {
   };
 
   const menuItems = [
-    // Super Admin sees "Home" which goes to Super Admin Home
     { 
       path: '/app/super-admin-home', 
       label: 'Home', 
       icon: <LayoutDashboard size={20} />,
       show: isSuperAdmin
     },
-    
-    // Super Admin also sees Organizations as a separate item
     { 
       path: '/app/tenants', 
       label: 'Organizations', 
       icon: <Building2 size={20} />,
       show: isSuperAdmin
     },
-    
-    // Tenant Admins see Home (NOT Super Admins)
     { 
       path: '/app/home', 
       label: 'Home', 
       icon: <LayoutDashboard size={20} />,
       show: !isSuperAdmin && (isAdmin || can.viewDashboard)
     },
-    
-    // Everyone sees Dashboard
     { 
       path: '/app/dashboard', 
       label: 'Dashboard', 
       icon: <LayoutDashboard size={20} />,
       show: can.viewDashboard
     },
-    
     { 
       path: '/app/analytics', 
       label: 'Analytics', 
       icon: <BarChart2 size={20} />,
       show: can.viewAnalytics
     },
-    
     { 
       path: '/app/users', 
       label: 'Users', 
       icon: <Users size={20} />,
       show: can.manageUsers
+    },
+    { 
+      path: '/app/audit-logs', 
+      label: 'Audit Logs', 
+      icon: <Shield size={20} />,
+      show: can.viewAuditLogs
     },
   ];
 
@@ -160,7 +159,8 @@ const MainLayout = () => {
         
         <nav className="p-4 space-y-2">
           {menuItems.filter(item => item.show).map((item) => {
-            const isActive = location.pathname.includes(item.path);
+            const isActive = location.pathname === item.path || 
+                           (item.path !== '/app/dashboard' && location.pathname.startsWith(item.path));
             return (
               <button
                 key={item.path}
@@ -176,10 +176,10 @@ const MainLayout = () => {
         </nav>
 
         <div className="absolute bottom-0 w-full p-4 border-t border-slate-700">
-           <button onClick={handleLogout} className="flex items-center gap-3 text-slate-400 hover:text-white transition-colors w-full px-4 py-2">
-              <LogOut size={18} />
-              <span>Sign Out</span>
-           </button>
+          <button onClick={handleLogout} className="flex items-center gap-3 text-slate-400 hover:text-white transition-colors w-full px-4 py-2">
+            <LogOut size={18} />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
 
@@ -216,8 +216,8 @@ const MainLayout = () => {
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border 
                       ${connectionStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' : 
                       'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>
-                      <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></div>
-                      {connectionStatus === 'connected' ? 'SYSTEM ONLINE' : 'CONNECTING...'}
+                    <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></div>
+                    {connectionStatus === 'connected' ? 'SYSTEM ONLINE' : 'CONNECTING...'}
                   </div>
                 )}
               </>
@@ -238,60 +238,60 @@ const MainLayout = () => {
             )}
             
             <div className="relative">
-                <button 
-                    onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                      isSettingsOpen 
-                        ? 'bg-slate-200 text-slate-800 dark:bg-slate-600 dark:text-white' 
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
-                    }`}
-                >
-                    <Settings size={20} />
-                </button>
+              <button 
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  isSettingsOpen 
+                    ? 'bg-slate-200 text-slate-800 dark:bg-slate-600 dark:text-white' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+                }`}
+              >
+                <Settings size={20} />
+              </button>
 
-                {isSettingsOpen && (
-                    <>
-                        <div className="fixed inset-0 z-10" onClick={() => setIsSettingsOpen(false)} />
-                        
-                        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right z-20">
-                            <div className="px-4 py-3 border-b border-slate-50 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
-                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Settings</p>
-                                <p className="text-xs text-slate-400">Account Management</p>
-                            </div>
-                            
-                            <div className="p-2 space-y-1">
-                                <button 
-                                  onClick={() => { navigate('/app/profile'); setIsSettingsOpen(false); }} 
-                                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors text-left"
-                                >
-                                    <User size={16} /> My Profile
-                                </button>
-                                
-                                {(can.exportProfile || can.importProfile) && (
-                                  <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
-                                )}
+              {isSettingsOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setIsSettingsOpen(false)} />
+                  
+                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right z-20">
+                    <div className="px-4 py-3 border-b border-slate-50 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Settings</p>
+                      <p className="text-xs text-slate-400">Account Management</p>
+                    </div>
+                    
+                    <div className="p-2 space-y-1">
+                      <button 
+                        onClick={() => { navigate('/app/profile'); setIsSettingsOpen(false); }} 
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors text-left"
+                      >
+                        <User size={16} /> My Profile
+                      </button>
+                      
+                      {(can.exportProfile || can.importProfile) && (
+                        <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+                      )}
 
-                                {can.exportProfile && (
-                                  <button 
-                                    onClick={handleExport} 
-                                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors text-left"
-                                  >
-                                      <Download size={16} /> Export Profile
-                                  </button>
-                                )}
+                      {can.exportProfile && (
+                        <button 
+                          onClick={handleExport} 
+                          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors text-left"
+                        >
+                          <Download size={16} /> Export Profile
+                        </button>
+                      )}
 
-                                {can.importProfile && (
-                                  <button 
-                                    onClick={handleImportClick} 
-                                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-colors text-left"
-                                  >
-                                      <Upload size={16} /> Import Profile
-                                  </button>
-                                )}
-                            </div>
-                        </div>
-                    </>
-                )}
+                      {can.importProfile && (
+                        <button 
+                          onClick={handleImportClick} 
+                          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-colors text-left"
+                        >
+                          <Upload size={16} /> Import Profile
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
           </div>

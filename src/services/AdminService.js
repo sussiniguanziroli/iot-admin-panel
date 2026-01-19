@@ -1,50 +1,105 @@
+// src/services/AdminService.js
 import { db } from '../firebase/config';
 import { collection, addDoc, doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-// --- AUDIT LOGGER ---
-// Records every important action (who did what, when, and to whom)
+export const ACTION_CATEGORIES = {
+  DEVICE_CONTROL: 'DEVICE_CONTROL',
+  USER_MGMT: 'USER_MGMT',
+  TENANT_MGMT: 'TENANT_MGMT',
+  CONFIG: 'CONFIG',
+  AUTH: 'AUTH',
+  DATA: 'DATA'
+};
+
+export const ACTION_TYPES = {
+  CONTROL_RELAY_ON: 'CONTROL_RELAY_ON',
+  CONTROL_RELAY_OFF: 'CONTROL_RELAY_OFF',
+  CONTROL_RELAY_ERROR: 'CONTROL_RELAY_ERROR',
+  CONTROL_MOTOR_START: 'CONTROL_MOTOR_START',
+  CONTROL_MOTOR_STOP: 'CONTROL_MOTOR_STOP',
+  MQTT_PUBLISH: 'MQTT_PUBLISH',
+  
+  USER_CREATED: 'USER_CREATED',
+  USER_DELETED: 'USER_DELETED',
+  USER_ROLE_CHANGED: 'USER_ROLE_CHANGED',
+  INVITE_CREATED: 'INVITE_CREATED',
+  INVITE_ACCEPTED: 'INVITE_ACCEPTED',
+  
+  TENANT_CREATED: 'TENANT_CREATED',
+  TENANT_UPDATED: 'TENANT_UPDATED',
+  TENANT_DELETED: 'TENANT_DELETED',
+  LOCATION_CREATED: 'LOCATION_CREATED',
+  LOCATION_UPDATED: 'LOCATION_UPDATED',
+  LOCATION_DELETED: 'LOCATION_DELETED',
+  
+  WIDGET_CREATED: 'WIDGET_CREATED',
+  WIDGET_UPDATED: 'WIDGET_UPDATED',
+  WIDGET_DELETED: 'WIDGET_DELETED',
+  DASHBOARD_LAYOUT_CHANGED: 'DASHBOARD_LAYOUT_CHANGED',
+  
+  LOGIN: 'LOGIN',
+  LOGOUT: 'LOGOUT',
+  PASSWORD_RESET: 'PASSWORD_RESET',
+  
+  DATA_EXPORTED: 'DATA_EXPORTED',
+  AUDIT_LOG_VIEWED: 'AUDIT_LOG_VIEWED'
+};
+
 export const logAction = async (actor, action, target, details = {}) => {
   try {
-    await addDoc(collection(db, "audit_logs"), {
+    const logEntry = {
       timestamp: serverTimestamp(),
-      actor: actor.email || 'system', // e.g. "admin@solfrut.com"
+      actor: actor.email || 'system',
       actorId: actor.uid || 'system',
-      action: action,                 // e.g. "CREATED_INVITE"
-      target: target,                 // e.g. "tenant-id-123"
-      details: details
-    });
+      actorRole: details.actorRole || 'unknown',
+      
+      action,
+      category: details.category || 'GENERAL',
+      target,
+      
+      tenantId: details.tenantId || null,
+      locationId: details.locationId || null,
+      
+      previousState: details.previousState || null,
+      newState: details.newState || null,
+      
+      metadata: details.metadata || {}
+    };
+
+    await addDoc(collection(db, "audit_logs"), logEntry);
   } catch (e) {
     console.error("Logger Failed:", e);
   }
 };
 
-// --- INVITATION LOGIC ---
-
-// 1. Create a secure token and save it to Firestore
 export const createInvitation = async (adminUser, tenantId, role, email = '') => {
-  // Generate a random secure token
   const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   
-  // Save invitation to 'invitations' collection
   await setDoc(doc(db, "invitations", token), {
     tenantId,
     role,
-    email: email.toLowerCase().trim(), // Optional: Lock invite to specific email
+    email: email.toLowerCase().trim(),
     createdBy: adminUser.email,
     createdAt: new Date().toISOString(),
-    status: 'pending', // pending, used, revoked
+    status: 'pending',
     token
   });
 
-  // Log the action
-  await logAction(adminUser, 'CREATED_INVITE', tenantId, { role, email, token });
+  await logAction(
+    adminUser, 
+    ACTION_TYPES.INVITE_CREATED, 
+    tenantId, 
+    { 
+      category: ACTION_CATEGORIES.USER_MGMT,
+      tenantId,
+      metadata: { role, email, token }
+    }
+  );
 
-  // Return the full registration URL
-  const baseUrl = window.location.origin; // Gets "http://localhost:5173" or your production domain
+  const baseUrl = window.location.origin;
   return `${baseUrl}/register?token=${token}`;
 };
 
-// 2. Check if a token is valid (called by Register page)
 export const validateInvitation = async (token) => {
   if (!token) return { valid: false, error: "No token provided" };
 
@@ -59,7 +114,6 @@ export const validateInvitation = async (token) => {
   return { valid: true, data };
 };
 
-// 3. Mark token as used (called after successful registration)
 export const markInvitationUsed = async (token, newUserId) => {
   const ref = doc(db, "invitations", token);
   await updateDoc(ref, { 

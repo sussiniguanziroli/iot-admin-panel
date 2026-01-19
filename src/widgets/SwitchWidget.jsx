@@ -1,8 +1,13 @@
+// src/widgets/SwitchWidget.jsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Power, ToggleLeft, Lock } from 'lucide-react';
 import BaseWidget from './BaseWidget';
-import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
+import { useMqtt } from '../features/mqtt/context/MqttContext';
+import { useDashboard } from '../features/dashboard/context/DashboardContext';
 import { usePermissions } from '../shared/hooks/usePermissions';
+import { useAuditLog } from '../shared/hooks/useAuditLog';
+import { ACTION_TYPES, ACTION_CATEGORIES } from '../services/AdminService';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import { parsePayload } from '../shared/utils/payloadParser';
@@ -13,13 +18,16 @@ const SwitchWidget = ({
   id, title, topic, commandTopic, dataKey = 'relay1', 
   commandFormat = 'text', onCommand = 'ON', offCommand = 'OFF', 
   onPayloadJSON, offPayloadJSON, customConfig, onEdit, onCustomize,
-  payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
+  payloadParsingMode, jsonPath, jsParserFunction, fallbackValue,
+  machineId
 }) => {
   const { can } = usePermissions();
+  const { log } = useAuditLog();
+  const { machines, activeLocation } = useDashboard();
+  
   const [isOn, setIsOn] = useState(() => switchStateStore[id] || false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
-  
   const [advancedSettings, setAdvancedSettings] = useState({});
 
   useEffect(() => {
@@ -110,6 +118,7 @@ const SwitchWidget = ({
     let payloadDescription;
 
     if (advancedSettings?.interlocks?.enabled && !isOn) {
+      // Interlock logic here if needed
     }
 
     if (commandFormat === 'json') {
@@ -124,6 +133,11 @@ const SwitchWidget = ({
     }
 
     const actionText = isOn ? 'TURN OFF' : 'TURN ON';
+    const actionType = isOn ? ACTION_TYPES.CONTROL_RELAY_OFF : ACTION_TYPES.CONTROL_RELAY_ON;
+    
+    // Get machine name for better logging
+    const machineName = machines.find(m => m.id === machineId)?.name || 'Unknown Machine';
+    const locationName = activeLocation?.name || 'Unknown Location';
     
     const result = await Swal.fire({
       title: `${actionText}?`,
@@ -131,6 +145,9 @@ const SwitchWidget = ({
         <div class="text-left space-y-2">
           <p class="text-slate-600">You are about to <strong>${actionText.toLowerCase()}</strong> this equipment.</p>
           <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg mt-3 text-sm space-y-1">
+            <p class="font-mono text-xs"><strong>Device:</strong> ${title}</p>
+            <p class="font-mono text-xs"><strong>Machine:</strong> ${machineName}</p>
+            <p class="font-mono text-xs"><strong>Location:</strong> ${locationName}</p>
             <p class="font-mono text-xs"><strong>Topic:</strong> ${commandTopic}</p>
             <p class="font-mono text-xs"><strong>Payload:</strong> <code class="bg-slate-200 dark:bg-slate-900 px-1 py-0.5 rounded">${payloadDescription}</code></p>
           </div>
@@ -154,16 +171,55 @@ const SwitchWidget = ({
         
         publishMessage(commandTopic, messageToSend);
         
+        // 🔥 AUDIT LOG
+        await log(
+          actionType,
+          ACTION_CATEGORIES.DEVICE_CONTROL,
+          `${title} (${machineName})`,
+          {
+            widgetId: id,
+            widgetTitle: title,
+            widgetType: 'switch',
+            machineId,
+            machineName,
+            locationName,
+            locationId: activeLocation?.id,
+            previousState: isOn ? 'ON' : 'OFF',
+            newState: isOn ? 'OFF' : 'ON',
+            topic: commandTopic,
+            payload: messageToSend,
+            dataKey,
+            commandFormat
+          }
+        );
+        
         if (advancedSettings?.feedback?.visualFeedback) {
+          // Visual feedback logic
         }
 
-        toast.success(`Command sent: ${payloadDescription}`, {
+        toast.success(`✅ ${actionText} command sent`, {
           position: 'bottom-right',
           autoClose: 2000
         });
       } catch (error) {
         console.error('Error sending command:', error);
         toast.error('Failed to send command', { position: 'top-right' });
+        
+        // 🔥 AUDIT LOG - ERROR
+        await log(
+          'CONTROL_RELAY_ERROR',
+          ACTION_CATEGORIES.DEVICE_CONTROL,
+          `${title} (${machineName}) - ERROR`,
+          {
+            widgetId: id,
+            widgetTitle: title,
+            machineId,
+            machineName,
+            locationName,
+            error: error.message,
+            attemptedAction: actionText
+          }
+        );
       }
     }
   };
@@ -201,7 +257,7 @@ const SwitchWidget = ({
         </span>
         
         {advancedSettings?.stateTracking?.enabled && advancedSettings?.stateTracking?.showLastChanged && lastUpdated && (
-           <span className="text-[10px] text-slate-400 mt-1">Changed: {lastUpdated}</span>
+          <span className="text-[10px] text-slate-400 mt-1">Changed: {lastUpdated}</span>
         )}
 
         {!can.controlEquipment && (

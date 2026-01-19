@@ -1,6 +1,8 @@
+// src/shared/utils/permissions.js
+
 export const PERMISSIONS = {
     EDIT_DASHBOARD: ['admin', 'super_admin'],
-    CONTROL_EQUIPMENT: ['admin', 'super_admin'],
+    CONTROL_EQUIPMENT: ['admin', 'super_admin', 'operator'],
     VIEW_DASHBOARD: ['operator', 'viewer', 'admin', 'super_admin'],
     
     MANAGE_USERS: ['admin', 'super_admin'],
@@ -15,14 +17,18 @@ export const PERMISSIONS = {
     CONFIGURE_MQTT: ['admin', 'super_admin'],
     VIEW_MQTT_STATUS: ['operator', 'viewer', 'admin', 'super_admin'],
     
-    EXPORT_DATA: ['admin', 'super_admin'],
+    EXPORT_DATA: ['admin', 'super_admin', 'operator'],
     VIEW_ANALYTICS: ['operator', 'viewer', 'admin', 'super_admin'],
     
     MANAGE_LOCATIONS: ['admin', 'super_admin'],
     VIEW_LOCATIONS: ['operator', 'viewer', 'admin', 'super_admin'],
     
     IMPORT_PROFILE: ['admin', 'super_admin'],
-    EXPORT_PROFILE: ['admin', 'super_admin']
+    EXPORT_PROFILE: ['admin', 'super_admin'],
+    
+    // ✅ NUEVOS - AUDIT LOGS
+    VIEW_AUDIT_LOGS: ['admin', 'super_admin'],
+    VIEW_ALL_AUDIT_LOGS: ['super_admin']
   };
   
   export const hasPermission = (userRole, permission) => {

@@ -1,3 +1,5 @@
+// src/router/AppRouter.jsx
+
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { RoleBasedRoute } from './RoleBasedRoute';
@@ -19,6 +21,7 @@ const TenantHome = lazy(() => import('../features/profile/pages/TenantHome'));
 const TenantsManagement = lazy(() => import('../features/tenant-management/pages/TenantsManagement'));
 const TenantDetails = lazy(() => import('../features/tenant-management/pages/TenantDetails'));
 const SuperAdminHome = lazy(() => import('../features/super-admin/pages/SuperAdminHome'));
+const AuditLogViewer = lazy(() => import('../features/admin/components/AuditLogViewer'));
 
 const LoadingScreen = () => (
   <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -59,6 +62,7 @@ export const AppRouter = () => {
             <Route element={<RoleBasedRoute allowedRoles={['admin', 'super_admin']} />}>
               <Route path="home" element={<TenantHome />} />
               <Route path="users" element={<UsersManagement />} />
+              <Route path="audit-logs" element={<AuditLogViewer />} />
             </Route>
 
             <Route element={<RoleBasedRoute allowedRoles={['operator', 'viewer', 'admin', 'super_admin']} />}>
@@ -73,7 +77,7 @@ export const AppRouter = () => {
                 replace
               />
             } />
-            
+
           </Route>
         </Route>
 

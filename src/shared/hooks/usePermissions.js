@@ -1,3 +1,5 @@
+// src/shared/hooks/usePermissions.js
+
 import { useAuth } from '../../features/auth/context/AuthContext';
 import { hasPermission as checkPermission } from '../utils/permissions';
 
@@ -32,7 +34,10 @@ export const usePermissions = () => {
     viewLocations: hasPermission('VIEW_LOCATIONS'),
     
     importProfile: hasPermission('IMPORT_PROFILE'),
-    exportProfile: hasPermission('EXPORT_PROFILE')
+    exportProfile: hasPermission('EXPORT_PROFILE'),
+    
+    viewAuditLogs: hasPermission('VIEW_AUDIT_LOGS'),
+    viewAllAuditLogs: hasPermission('VIEW_ALL_AUDIT_LOGS')
   };
   
   return { 

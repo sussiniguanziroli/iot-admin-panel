@@ -1,3 +1,5 @@
+// src/config/routes.config.js
+
 export const ROUTE_CONFIG = {
     super_admin: {
       defaultPath: '/app/super-admin-home',
@@ -8,6 +10,7 @@ export const ROUTE_CONFIG = {
         '/app/dashboard',
         '/app/analytics',
         '/app/users',
+        '/app/audit-logs',      // ✅ Super admin ve TODOS los logs
         '/app/profile'
       ],
       layout: 'SuperAdminLayout'
@@ -20,6 +23,7 @@ export const ROUTE_CONFIG = {
         '/app/dashboard',
         '/app/analytics',
         '/app/users',
+        '/app/audit-logs',      // ✅ Admin ve logs de SU tenant
         '/app/profile'
       ],
       layout: 'AdminLayout'

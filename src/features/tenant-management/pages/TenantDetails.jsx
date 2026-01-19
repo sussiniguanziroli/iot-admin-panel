@@ -18,6 +18,7 @@ import L from 'leaflet';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+import BillingManagement from '../../billing/components/BillingManagement';
 
 let DefaultIcon = L.icon({
     iconUrl: icon,
@@ -250,13 +251,15 @@ const TenantDetails = () => {
 
       {/* MAIN TABS */}
       <div className="flex gap-6 border-b border-slate-200 dark:border-slate-700 mb-6">
-        {['overview', 'locations', 'users'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} 
-                className={`pb-3 text-sm font-bold border-b-2 transition-colors capitalize ${activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>
-                {tab === 'locations' ? `Locations (${tenantLocations.length})` : tab}
-            </button>
-        ))}
-      </div>
+  {['overview', 'locations', 'users', 'billing'].map(tab => (
+    <button key={tab} onClick={() => setActiveTab(tab)} 
+      className={`pb-3 text-sm font-bold border-b-2 transition-colors capitalize ${
+        activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
+      }`}>
+      {tab === 'locations' ? `Locations (${tenantLocations.length})` : tab}
+    </button>
+  ))}
+</div>
 
       {/* ======================= TAB: LOCATIONS ======================= */}
       {activeTab === 'locations' && (
@@ -503,6 +506,11 @@ const TenantDetails = () => {
             </div>
         </div>
       )}
+
+      {/* --- TAB: BILLING (SUPER ADMIN VIEW) --- */}
+{activeTab === 'billing' && (
+  <BillingManagement tenantId={tenantId} isSuperAdmin={true} />
+)}
 
       {/* --- MODAL: INVITE USER (SECURE FLOW) --- */}
       {isUserModalOpen && (
