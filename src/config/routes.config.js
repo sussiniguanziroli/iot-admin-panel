@@ -23,6 +23,7 @@ export const ROUTE_CONFIG = {
         '/app/dashboard',
         '/app/analytics',
         '/app/users',
+        '/app/billing', 
         '/app/audit-logs',      // ✅ Admin ve logs de SU tenant
         '/app/profile'
       ],

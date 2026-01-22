@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../../auth/context/AuthContext';
 import { usePermissions } from '../../../shared/hooks/usePermissions';
@@ -17,7 +18,7 @@ import MqttAuditor from '../../mqtt-auditor/MqttAuditor';
 
 import {
     PlusCircle, Plus, X, Building, ChevronDown, Loader2,
-    MapPin, AlertCircle, Lock, Activity
+    MapPin, AlertCircle, Lock, Activity, Settings
 } from 'lucide-react';
 import { DndContext, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -35,6 +36,7 @@ const WidgetFactory = ({ widget, onEdit, onCustomize }) => {
 };
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const {
         widgets, isEditMode, addWidget, updateWidget,
         machines, activeMachineId, setActiveMachineId, addMachine, removeMachine,
@@ -118,48 +120,72 @@ const Dashboard = () => {
         setCustomizingWidget(null);
     };
 
+    const handleGoToTenantConfig = () => {
+        if (viewedTenantId) {
+            navigate(`/app/tenants/${viewedTenantId}`);
+        }
+    };
+
     return (
         <div className="max-w-7xl mx-auto pb-20">
 
             {isSuperAdmin && (
-                <div className="mb-4 bg-slate-800 text-white p-4 rounded-xl flex items-center justify-between shadow-lg">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-500 rounded-lg">
-                            <Building size={20} />
-                        </div>
-                        <div>
-                            <p className="text-xs text-indigo-200 font-bold uppercase tracking-wider">Super Admin Mode</p>
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm opacity-70">Viewing:</span>
-                                <div className="relative group">
-                                    <select
-                                        value={viewedTenantId || ''}
-                                        onChange={(e) => switchTenant(e.target.value)}
-                                        className="appearance-none bg-slate-900 border border-slate-600 text-white pl-3 pr-8 py-1 rounded cursor-pointer hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
-                                    >
-                                        <option value="" disabled>Select Tenant</option>
-                                        {availableTenants.map(t => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={14} className="absolute right-2 top-2 pointer-events-none text-slate-400" />
+                <div className="mb-4 bg-slate-800 text-white p-4 rounded-xl shadow-lg">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-500 rounded-lg">
+                                <Building size={20} />
+                            </div>
+                            <div>
+                                <p className="text-xs text-indigo-200 font-bold uppercase tracking-wider">Super Admin Mode</p>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm opacity-70">Viewing:</span>
+                                    <div className="relative group">
+                                        <select
+                                            value={viewedTenantId || ''}
+                                            onChange={(e) => switchTenant(e.target.value)}
+                                            className="appearance-none bg-slate-900 border border-slate-600 text-white pl-3 pr-8 py-1 rounded cursor-pointer hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
+                                        >
+                                            <option value="" disabled>Select Tenant</option>
+                                            {availableTenants.map(t => (
+                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-2 top-2 pointer-events-none text-slate-400" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setIsMqttAuditorOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-bold transition-colors shadow-lg"
-                        >
-                            <Activity size={18} />
-                            MQTT Auditor
-                        </button>
-                        {loadingData && (
-                            <div className="flex items-center gap-2 text-xs text-indigo-300 animate-pulse">
-                                <Loader2 size={14} className="animate-spin" /> Syncing...
-                            </div>
-                        )}
+                        
+                        <div className="flex flex-wrap items-center gap-3">
+                            <button
+                                onClick={handleGoToTenantConfig}
+                                disabled={!viewedTenantId}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-colors shadow-lg ${
+                                    viewedTenantId
+                                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                        : 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                                }`}
+                            >
+                                <Settings size={18} />
+                                <span className="hidden sm:inline">Configure</span>
+                            </button>
+                            
+                            <button
+                                onClick={() => setIsMqttAuditorOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-bold transition-colors shadow-lg"
+                            >
+                                <Activity size={18} />
+                                <span className="hidden sm:inline">MQTT Auditor</span>
+                            </button>
+                            
+                            {loadingData && (
+                                <div className="flex items-center gap-2 text-xs text-indigo-300 animate-pulse">
+                                    <Loader2 size={14} className="animate-spin" /> 
+                                    <span className="hidden md:inline">Syncing...</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

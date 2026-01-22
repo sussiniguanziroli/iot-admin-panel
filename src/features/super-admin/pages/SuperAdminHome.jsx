@@ -1,3 +1,5 @@
+// src/features/super-admin/pages/SuperAdminHome.jsx
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
@@ -190,14 +192,14 @@ const SuperAdminHome = () => {
             </button>
 
             <button
-              onClick={() => navigate('/app/tenants')}
+              onClick={() => navigate('/app/audit-logs')}
               className="w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors flex items-center justify-between group"
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
                   <BarChart3 size={16} />
                 </div>
-                <span className="font-medium text-slate-700 dark:text-slate-300">View Platform Analytics</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">View Audit Logs</span>
               </div>
               <ArrowRight size={16} className="text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400" />
             </button>

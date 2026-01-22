@@ -6,6 +6,7 @@ import { RoleBasedRoute } from './RoleBasedRoute';
 import { ProtectedRoute } from './ProtectedRoute';
 import { useAuth } from '../features/auth/context/AuthContext';
 import { getDefaultPath } from '../config/routes.config';
+import TenantSetupWizard from '../features/tenant-management/utils/TenantSetupWizard';
 
 const LandingPage = lazy(() => import('../features/landing/pages/LandingPage'));
 const Login = lazy(() => import('../features/auth/pages/Login'));
@@ -22,6 +23,7 @@ const TenantsManagement = lazy(() => import('../features/tenant-management/pages
 const TenantDetails = lazy(() => import('../features/tenant-management/pages/TenantDetails'));
 const SuperAdminHome = lazy(() => import('../features/super-admin/pages/SuperAdminHome'));
 const AuditLogViewer = lazy(() => import('../features/admin/components/AuditLogViewer'));
+const BillingPage = lazy(() => import('../features/billing/pages/BillingPage'));
 
 const LoadingScreen = () => (
   <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -56,12 +58,14 @@ export const AppRouter = () => {
             <Route element={<RoleBasedRoute allowedRoles={['super_admin']} />}>
               <Route path="super-admin-home" element={<SuperAdminHome />} />
               <Route path="tenants" element={<TenantsManagement />} />
+              <Route path="tenants/setup" element={<TenantSetupWizard />} />
               <Route path="tenants/:tenantId" element={<TenantDetails />} />
             </Route>
 
             <Route element={<RoleBasedRoute allowedRoles={['admin', 'super_admin']} />}>
               <Route path="home" element={<TenantHome />} />
               <Route path="users" element={<UsersManagement />} />
+              <Route path="billing" element={<BillingPage />} />
               <Route path="audit-logs" element={<AuditLogViewer />} />
             </Route>
 
