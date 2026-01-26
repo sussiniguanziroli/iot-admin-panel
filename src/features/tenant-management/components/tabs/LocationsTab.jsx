@@ -58,7 +58,9 @@ const LocationsTab = ({ tenantId }) => {
         port: 8884,
         protocol: 'wss',
         username: '',
-        password: ''
+        password: '',
+        backend_port: 8883,      // Default HiveMQ seguro
+        backend_protocol: 'mqtts' // Default HiveMQ seguro
     });
 
     useEffect(() => {
@@ -118,7 +120,11 @@ const LocationsTab = ({ tenantId }) => {
             port: loc.mqtt_config?.port || 8884,
             protocol: loc.mqtt_config?.protocol || 'wss',
             username: loc.mqtt_config?.username || '',
-            password: loc.mqtt_config?.password || ''
+            password: loc.mqtt_config?.password || '',
+            // --- CARGAR DATOS BACKEND ---
+            // Si no existen (porque es viejo), usamos defaults inteligentes
+            backend_port: loc.mqtt_config?.backend_port || 8883,
+            backend_protocol: loc.mqtt_config?.backend_protocol || 'mqtts'
         });
         setMapCenter([loc.lat || -34.6037, loc.lng || -58.3816]);
         setMapZoom(15);
@@ -169,11 +175,17 @@ const LocationsTab = ({ tenantId }) => {
             lat: locationForm.lat,
             lng: locationForm.lng,
             mqtt_config: {
+                // CONFIGURACIÓN FRONTEND (React)
                 host: locationForm.host,
                 port: Number(locationForm.port),
                 protocol: locationForm.protocol,
                 username: locationForm.username,
-                password: locationForm.password
+                password: locationForm.password,
+
+                // CONFIGURACIÓN BACKEND (Node.js Ingestor)
+                // Aquí guardamos la "Instrucción" para el servidor
+                backend_port: Number(locationForm.backend_port),
+                backend_protocol: locationForm.backend_protocol
             },
             updatedAt: new Date().toISOString()
         };
@@ -239,8 +251,8 @@ const LocationsTab = ({ tenantId }) => {
         <div className="space-y-4">
             {tenantLimits && tenantUsage && (
                 <div className={`rounded-xl border-2 p-4 ${isNearLimit
-                        ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
-                        : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                    ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
                     }`}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -272,8 +284,8 @@ const LocationsTab = ({ tenantId }) => {
                             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
                                 <div
                                     className={`h-full transition-all duration-500 ${usagePercentage >= 90 ? 'bg-red-500' :
-                                            usagePercentage >= 80 ? 'bg-orange-500' :
-                                                'bg-blue-500'
+                                        usagePercentage >= 80 ? 'bg-orange-500' :
+                                            'bg-blue-500'
                                         }`}
                                     style={{ width: `${Math.min(usagePercentage, 100)}%` }}
                                 />
@@ -338,8 +350,8 @@ const LocationsTab = ({ tenantId }) => {
                                         onClick={createNewLocation}
                                         disabled={!canAddLocation()}
                                         className={`p-1.5 rounded-lg transition-colors ${canAddLocation()
-                                                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                                : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                            : 'bg-slate-300 text-slate-500 cursor-not-allowed'
                                             }`}
                                         title={canAddLocation() ? 'Add Location' : 'Location limit reached'}
                                     >
@@ -371,15 +383,15 @@ const LocationsTab = ({ tenantId }) => {
                                     key={loc.id}
                                     onClick={() => selectLocation(loc)}
                                     className={`w-full text-left p-3 rounded-xl border-2 transition-all group hover:shadow-md ${selectedLocation?.id === loc.id
-                                            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700'
-                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800'
+                                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700'
+                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800'
                                         }`}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1 min-w-0">
                                             <p className={`font-bold text-sm truncate ${selectedLocation?.id === loc.id
-                                                    ? 'text-blue-700 dark:text-blue-300'
-                                                    : 'text-slate-800 dark:text-slate-200'
+                                                ? 'text-blue-700 dark:text-blue-300'
+                                                : 'text-slate-800 dark:text-slate-200'
                                                 }`}>
                                                 {loc.name}
                                             </p>
@@ -463,8 +475,8 @@ const LocationsTab = ({ tenantId }) => {
                                     <button
                                         onClick={() => setActiveSubTab('info')}
                                         className={`flex-1 px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeSubTab === 'info'
-                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                                             }`}
                                     >
                                         <Globe size={14} /> General
@@ -472,8 +484,8 @@ const LocationsTab = ({ tenantId }) => {
                                     <button
                                         onClick={() => setActiveSubTab('mqtt')}
                                         className={`flex-1 px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${activeSubTab === 'mqtt'
-                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                                             }`}
                                     >
                                         <Wifi size={14} /> Connectivity
@@ -577,15 +589,16 @@ const LocationsTab = ({ tenantId }) => {
                                                     </div>
                                                     <div>
                                                         <h3 className="font-bold text-emerald-900 dark:text-emerald-100">
-                                                            MQTT Broker Configuration
+                                                            MQTT Connection
                                                         </h3>
                                                         <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                                                            Connect this site to your IoT infrastructure
+                                                            Define how both App and Server connect
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
 
+                                            {/* --- CREDENCIALES COMUNES --- */}
                                             <div>
                                                 <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2 block">
                                                     Broker Host
@@ -593,7 +606,7 @@ const LocationsTab = ({ tenantId }) => {
                                                 <input
                                                     type="text"
                                                     required
-                                                    className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm dark:bg-slate-800 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 outline-none transition-all"
+                                                    className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm dark:bg-slate-800 dark:text-white focus:border-emerald-500 outline-none transition-all"
                                                     value={locationForm.host}
                                                     onChange={e => setLocationForm({ ...locationForm, host: e.target.value })}
                                                     placeholder="e.g. broker.hivemq.com"
@@ -603,41 +616,13 @@ const LocationsTab = ({ tenantId }) => {
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2 block">
-                                                        Port
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        required
-                                                        className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm dark:bg-slate-800 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 outline-none transition-all"
-                                                        value={locationForm.port}
-                                                        onChange={e => setLocationForm({ ...locationForm, port: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2 block">
-                                                        Protocol
-                                                    </label>
-                                                    <select
-                                                        className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm dark:bg-slate-800 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 outline-none transition-all"
-                                                        value={locationForm.protocol}
-                                                        onChange={e => setLocationForm({ ...locationForm, protocol: e.target.value })}
-                                                    >
-                                                        <option value="wss">WSS (Secure)</option> <option value="ws">WS (Insecure)</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2 block">
                                                         Username
                                                     </label>
                                                     <input
                                                         type="text"
-                                                        className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm dark:bg-slate-800 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 outline-none transition-all"
+                                                        className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm dark:bg-slate-800 dark:text-white outline-none"
                                                         value={locationForm.username}
                                                         onChange={e => setLocationForm({ ...locationForm, username: e.target.value })}
-                                                        placeholder="Optional"
                                                     />
                                                 </div>
                                                 <div>
@@ -646,11 +631,80 @@ const LocationsTab = ({ tenantId }) => {
                                                     </label>
                                                     <input
                                                         type="password"
-                                                        className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm dark:bg-slate-800 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 outline-none transition-all"
+                                                        className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm dark:bg-slate-800 dark:text-white outline-none"
                                                         value={locationForm.password}
                                                         onChange={e => setLocationForm({ ...locationForm, password: e.target.value })}
-                                                        placeholder="Optional"
                                                     />
+                                                </div>
+                                            </div>
+
+                                            {/* --- SEPARADOR FRONTEND --- */}
+                                            <div className="mt-6 mb-2 flex items-center gap-2">
+                                                <div className="h-px bg-slate-200 flex-1"></div>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase">Frontend Config (React)</span>
+                                                <div className="h-px bg-slate-200 flex-1"></div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-blue-600 uppercase mb-1 block">
+                                                        Frontend Port (WSS)
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        required
+                                                        className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm font-mono"
+                                                        value={locationForm.port}
+                                                        onChange={e => setLocationForm({ ...locationForm, port: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-blue-600 uppercase mb-1 block">
+                                                        Protocol
+                                                    </label>
+                                                    <select
+                                                        className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm font-mono"
+                                                        value={locationForm.protocol}
+                                                        onChange={e => setLocationForm({ ...locationForm, protocol: e.target.value })}
+                                                    >
+                                                        <option value="wss">WSS (Secure)</option>
+                                                        <option value="ws">WS (Insecure)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            {/* --- SEPARADOR BACKEND (LO NUEVO) --- */}
+                                            <div className="mt-4 mb-2 flex items-center gap-2">
+                                                <div className="h-px bg-slate-200 flex-1"></div>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase">Backend Config (Ingestor)</span>
+                                                <div className="h-px bg-slate-200 flex-1"></div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4 bg-purple-50/50 p-3 rounded-xl border border-purple-100">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-purple-600 uppercase mb-1 block">
+                                                        Backend Port (TCP)
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        required
+                                                        className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm font-mono"
+                                                        value={locationForm.backend_port}
+                                                        onChange={e => setLocationForm({ ...locationForm, backend_port: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-purple-600 uppercase mb-1 block">
+                                                        Protocol
+                                                    </label>
+                                                    <select
+                                                        className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm font-mono"
+                                                        value={locationForm.backend_protocol}
+                                                        onChange={e => setLocationForm({ ...locationForm, backend_protocol: e.target.value })}
+                                                    >
+                                                        <option value="mqtts">MQTTS (Secure TCP)</option>
+                                                        <option value="mqtt">MQTT (TCP)</option>
+                                                    </select>
                                                 </div>
                                             </div>
                                         </>
