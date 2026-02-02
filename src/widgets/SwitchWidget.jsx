@@ -1,5 +1,3 @@
-// src/widgets/SwitchWidget.jsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Power, ToggleLeft, Lock } from 'lucide-react';
 import BaseWidget from './BaseWidget';
@@ -12,8 +10,6 @@ import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import { parsePayload } from '../shared/utils/payloadParser';
 
-const switchStateStore = {};
-
 const SwitchWidget = ({ 
   id, title, topic, commandTopic, dataKey = 'relay1', 
   commandFormat = 'text', onCommand = 'ON', offCommand = 'OFF', 
@@ -23,9 +19,9 @@ const SwitchWidget = ({
 }) => {
   const { can } = usePermissions();
   const { log } = useAuditLog();
-  const { machines, activeLocation } = useDashboard();
+  const { machines, activeLocation, getWidgetData, setWidgetData } = useDashboard();
   
-  const [isOn, setIsOn] = useState(() => switchStateStore[id] || false);
+  const [isOn, setIsOn] = useState(() => getWidgetData('switch', id) || false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   const [advancedSettings, setAdvancedSettings] = useState({});
@@ -61,19 +57,6 @@ const SwitchWidget = ({
           fallbackValue: null
         });
 
-        if (serverValue === null || serverValue === undefined) {
-          try {
-            const payload = JSON.parse(lastMessage.payload);
-            serverValue = payload[dataKey];
-            
-            if (serverValue === undefined) {
-              serverValue = payload.value || payload.estado || payload.status;
-            }
-          } catch (e) {
-            serverValue = lastMessage.payload.toString();
-          }
-        }
-
         if (serverValue !== undefined && serverValue !== null) {
           const valString = String(serverValue).toUpperCase();
           const newState = (
@@ -82,28 +65,19 @@ const SwitchWidget = ({
             valString === 'TRUE' ||
             valString === 'HIGH' ||
             valString === 'MARCHA' ||
-            valString === 'ACTIVE'
+            valString === 'ACTIVE' ||
+            valString === 'CLOSED'
           );
           
           setIsOn(newState);
           setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-          switchStateStore[id] = newState;
+          setWidgetData('switch', id, newState);
         }
       } catch (e) {
         console.error('[SwitchWidget] Error processing message:', e);
-        const rawState = lastMessage.payload.toString().toUpperCase();
-        if (rawState === 'ON' || rawState === 'MARCHA' || rawState === '1' || rawState === 'TRUE') {
-          setIsOn(true);
-          switchStateStore[id] = true;
-          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-        } else if (rawState === 'OFF' || rawState === 'PARADA' || rawState === '0' || rawState === 'FALSE') {
-          setIsOn(false);
-          switchStateStore[id] = false;
-          setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-        }
       }
     }
-  }, [lastMessage, topic, id, dataKey, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue]);
+  }, [lastMessage, topic, id, dataKey, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue, setWidgetData]);
 
   const toggle = async () => {
     if (!can.controlEquipment) {
@@ -118,7 +92,6 @@ const SwitchWidget = ({
     let payloadDescription;
 
     if (advancedSettings?.interlocks?.enabled && !isOn) {
-      // Interlock logic here if needed
     }
 
     if (commandFormat === 'json') {
@@ -135,7 +108,6 @@ const SwitchWidget = ({
     const actionText = isOn ? 'TURN OFF' : 'TURN ON';
     const actionType = isOn ? ACTION_TYPES.CONTROL_RELAY_OFF : ACTION_TYPES.CONTROL_RELAY_ON;
     
-    // Get machine name for better logging
     const machineName = machines.find(m => m.id === machineId)?.name || 'Unknown Machine';
     const locationName = activeLocation?.name || 'Unknown Location';
     
@@ -171,7 +143,6 @@ const SwitchWidget = ({
         
         publishMessage(commandTopic, messageToSend);
         
-        // 🔥 AUDIT LOG
         await log(
           actionType,
           ACTION_CATEGORIES.DEVICE_CONTROL,
@@ -194,7 +165,6 @@ const SwitchWidget = ({
         );
         
         if (advancedSettings?.feedback?.visualFeedback) {
-          // Visual feedback logic
         }
 
         toast.success(`✅ ${actionText} command sent`, {
@@ -205,7 +175,6 @@ const SwitchWidget = ({
         console.error('Error sending command:', error);
         toast.error('Failed to send command', { position: 'top-right' });
         
-        // 🔥 AUDIT LOG - ERROR
         await log(
           'CONTROL_RELAY_ERROR',
           ACTION_CATEGORIES.DEVICE_CONTROL,

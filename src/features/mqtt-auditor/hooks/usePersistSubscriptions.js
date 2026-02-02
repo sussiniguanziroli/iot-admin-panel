@@ -46,8 +46,8 @@ export const usePersistSubscriptions = (subscriptions, addSubscription) => {
         const data = docSnap.data();
         console.log('[MQTT Auditor] Loaded subscriptions from Firestore:', data.subscriptions);
         
-        data.subscriptions?.forEach(sub => {
-          addSubscription(sub.topic, sub.qos);
+        data.subscriptions?.forEach((sub, index) => {
+          addSubscription(sub.topic, sub.qos, false);
         });
       }
     } catch (error) {

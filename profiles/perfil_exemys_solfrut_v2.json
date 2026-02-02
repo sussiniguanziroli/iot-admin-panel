@@ -1,0 +1,206 @@
+{
+    "version": "2.0",
+    "timestamp": "2026-01-27",
+    "project": "SolFrut - Estación de Bombeo (Simulación Exemys)",
+    "description": "Perfil V2 con configuraciones avanzadas (Gradientes, Zonas de Color, Comandos de Texto)",
+    
+    "mqtt_config": {
+      "host": "d117b2b403d34e1cbc27488bb7782e37.s1.eu.hivemq.cloud",
+      "port": 8884,
+      "protocol": "wss",
+      "username": "sussiniguanziroli",
+      "password": "SolFrut2025",
+      "backend_port": 8883,
+      "backend_protocol": "mqtts"
+    },
+  
+    "machines": [
+      { "id": "motor_4", "name": "Motor Bomba 4" },
+      { "id": "motor_5", "name": "Motor Bomba 5" },
+      { "id": "motor_6", "name": "Motor Bomba 6" },
+      { "id": "reconectador", "name": "Reconectador Gral" }
+    ],
+  
+    "widgets": [
+      
+     
+      {
+        "id": "m4_switch",
+        "machineId": "motor_4",
+        "type": "switch",
+        "title": "Accionamiento M4",
+        "topic": "solfrut/motores/m4/telemetria",
+        "commandTopic": "solfrut/motores/m4/comandos",
+        "dataKey": "estado",
+        "commandFormat": "text",
+        "onCommand": "MARCHA",
+        "offCommand": "PARADA",
+        "width": "half",
+        "height": "sm",
+        "customConfig": {
+          "confirmationMode": { "enabled": true, "type": "single-click" }
+        }
+      },
+      {
+        "id": "m4_status",
+        "machineId": "motor_4",
+        "type": "metric",
+        "title": "Estado Actual",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "estado",
+        "iconKey": "activity",
+        "color": "blue",
+        "width": "half",
+        "height": "sm"
+      },
+      {
+        "id": "m4_gauge",
+        "machineId": "motor_4",
+        "type": "gauge",
+        "title": "Amperaje M4",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "corriente",
+        "min": 0,
+        "max": 40,
+        "width": "half",
+        "height": "md",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 25, "color": "#10b981" },
+              { "min": 25.1, "max": 35, "color": "#f59e0b" },
+              { "min": 35.1, "max": 40, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "m4_chart",
+        "machineId": "motor_4",
+        "type": "chart",
+        "title": "Curva de Carga M4 (TR)",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "corriente",
+        "color": "#3b82f6",
+        "min": 0,
+        "max": 45,
+        "width": "half",
+        "height": "md",
+        "customConfig": {
+          "gradientColors": { "enabled": true, "topColor": "#3b82f6", "bottomColor": "#eff6ff", "opacity": 0.4 },
+          "lineStyle": { "strokeWidth": 3, "type": "monotone" },
+          "axisConfig": { "xAxis": { "show": false } }
+        }
+      },
+  
+   
+      {
+        "id": "m5_switch",
+        "machineId": "motor_5",
+        "type": "switch",
+        "title": "Accionamiento M5",
+        "topic": "solfrut/motores/m5/telemetria",
+        "commandTopic": "solfrut/motores/m5/comandos",
+        "dataKey": "estado",
+        "commandFormat": "text",
+        "onCommand": "MARCHA",
+        "offCommand": "PARADA",
+        "width": "half",
+        "height": "sm",
+        "customConfig": {
+          "confirmationMode": { "enabled": true }
+        }
+      },
+      {
+        "id": "m5_fail",
+        "machineId": "motor_5",
+        "type": "metric",
+        "title": "Alerta Falla",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "falla",
+        "iconKey": "zap",
+        "color": "red",
+        "width": "half",
+        "height": "sm",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": "SI", "color": "red" },
+              { "condition": "===", "value": "NO", "color": "green" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "m5_gauge",
+        "machineId": "motor_5",
+        "type": "gauge",
+        "title": "Amperaje M5",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "corriente",
+        "min": 0,
+        "max": 40,
+        "width": "half",
+        "height": "md",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 20, "color": "#10b981" },
+              { "min": 20.1, "max": 40, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "m5_chart",
+        "machineId": "motor_5",
+        "type": "chart",
+        "title": "Curva de Carga M5",
+        "topic": "solfrut/motores/m5/telemetria",
+        "dataKey": "corriente",
+        "color": "#10b981",
+        "min": 0,
+        "max": 45,
+        "width": "half",
+        "height": "md",
+        "customConfig": {
+          "gradientColors": { "enabled": true, "topColor": "#10b981", "bottomColor": "#ecfdf5" },
+          "lineStyle": { "strokeWidth": 2 }
+        }
+      },
+  
+    
+      {
+        "id": "reco_switch",
+        "machineId": "reconectador",
+        "type": "switch",
+        "title": "Interruptor General 13.2kV",
+        "topic": "solfrut/reco1/estado",
+        "commandTopic": "solfrut/reco1/comandos",
+        "dataKey": "estado",
+        "commandFormat": "text",
+        "onCommand": "CLOSE",
+        "offCommand": "TRIP",
+        "width": "full",
+        "height": "sm",
+        "customConfig": {
+          "confirmationMode": { "enabled": true, "type": "double-click" }
+        }
+      },
+      {
+        "id": "reco_metric",
+        "machineId": "reconectador",
+        "type": "metric",
+        "title": "Estado Línea",
+        "topic": "solfrut/reco1/estado",
+        "dataKey": "estado",
+        "iconKey": "zap",
+        "color": "purple",
+        "width": "full",
+        "height": "sm"
+      }
+    ]
+  }

@@ -3,16 +3,16 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Gauge as GaugeIcon } from 'lucide-react';
 import BaseWidget from './BaseWidget';
 import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
+import { useDashboard } from '../../src/features/dashboard/context/DashboardContext';
 import { parsePayload } from '../shared/utils/payloadParser';
-
-const gaugeDataStore = {};
 
 const GaugeWidget = ({ 
   id, title, topic, dataKey, min = 0, max = 100, 
   customConfig, onEdit, onCustomize,
   payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
 }) => {
-  const [value, setValue] = useState(() => gaugeDataStore[id] || 0);
+  const { getWidgetData, setWidgetData } = useDashboard();
+  const [value, setValue] = useState(() => getWidgetData('gauge', id) || 0);
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   
@@ -46,25 +46,9 @@ const GaugeWidget = ({
           dataKey: dataKey || 'value',
           jsonPath: jsonPath || '',
           jsParserFunction: jsParserFunction || '',
-          fallbackValue: null
+          fallbackValue: 0
         });
 
-        if (extractedValue === null || extractedValue === undefined || extractedValue === '--') {
-          try {
-            const payload = JSON.parse(lastMessage.payload);
-            if (payload[dataKey] !== undefined) {
-              extractedValue = Number(payload[dataKey]);
-            } else if (payload.value !== undefined) {
-              extractedValue = Number(payload.value);
-            }
-          } catch (e) {
-            const rawValue = lastMessage.payload.toString();
-            if (!isNaN(rawValue)) {
-              extractedValue = parseFloat(rawValue);
-            }
-          }
-        }
-        
         if (extractedValue !== null && extractedValue !== undefined && !isNaN(extractedValue)) {
           extractedValue = Number(extractedValue);
 
@@ -75,13 +59,13 @@ const GaugeWidget = ({
 
           setValue(extractedValue);
           setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-          gaugeDataStore[id] = extractedValue;
+          setWidgetData('gauge', id, extractedValue);
         }
       } catch (e) {
         console.error('[GaugeWidget] Error parsing payload:', e);
       }
     }
-  }, [lastMessage, topic, dataKey, id, advConfig, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue]);
+  }, [lastMessage, topic, dataKey, id, advConfig, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue, setWidgetData]);
 
   const determineColor = (val) => {
       if (advConfig?.colorZones?.enabled && advConfig.colorZones.zones) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Zap, Clock, Box, Droplets, Thermometer, Activity } from 'lucide-react';
 import BaseWidget from './BaseWidget';
 import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
+import { useDashboard } from '../../src/features/dashboard/context/DashboardContext';
 import { parsePayload } from '../shared/utils/payloadParser';
 
 const ICON_MAP = {
@@ -13,14 +14,13 @@ const ICON_MAP = {
   activity: Activity
 };
 
-const metricDataStore = {};
-
 const MetricWidget = ({ 
   id, title, topic, dataKey, unit = '', color = 'blue', iconKey = 'activity', 
   customConfig, onEdit, onCustomize,
   payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
 }) => {
-  const [value, setValue] = useState(() => metricDataStore[id] || '--');
+  const { getWidgetData, setWidgetData } = useDashboard();
+  const [value, setValue] = useState(() => getWidgetData('metric', id) || '--');
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   
@@ -57,50 +57,34 @@ const MetricWidget = ({
           fallbackValue: fallbackValue || '--'
         });
 
-        if (extractedValue === '--' || extractedValue === null || extractedValue === undefined) {
-          try {
-            const payload = JSON.parse(lastMessage.payload);
-            if (payload.value !== undefined) {
-              extractedValue = payload.value;
-              if (dataKey === 'value' && (extractedValue === 0 || extractedValue === 1)) {
-                extractedValue = extractedValue === 1 ? 'ON' : 'OFF';
-              }
-            }
-          } catch (e) {
-            extractedValue = lastMessage.payload.toString();
-          }
-        }
-
         if (advConfig?.dataTransformation?.enabled && typeof extractedValue === 'number') {
-            const { multiplier = 1, offset = 0, decimals = 2, prefix = '', suffix = '' } = advConfig.dataTransformation;
+            const { multiplier = 1, offset = 0, decimals = 2 } = advConfig.dataTransformation;
             extractedValue = ((extractedValue * multiplier) + offset).toFixed(decimals);
         }
         
         setValue(extractedValue);
         setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
-        metricDataStore[id] = extractedValue;
+        setWidgetData('metric', id, extractedValue);
       } catch (e) {
         console.error('[MetricWidget] Error processing message:', e);
-        const rawValue = lastMessage.payload.toString();
-        setValue(rawValue);
-        setLastUpdated(lastMessage.timestamp.toLocaleTimeString());
       }
     }
-  }, [lastMessage, topic, dataKey, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue, id, advConfig]);
+  }, [lastMessage, topic, dataKey, payloadParsingMode, jsonPath, jsParserFunction, fallbackValue, id, advConfig, setWidgetData]);
 
   const Icon = ICON_MAP[iconKey] || Activity;
 
   let displayColor = color;
   
-  if (advConfig?.conditionalFormatting?.enabled && typeof value === 'number') {
+  if (advConfig?.conditionalFormatting?.enabled) {
       const rule = advConfig.conditionalFormatting.rules.find(r => {
+          const val = typeof value === 'string' ? value : Number(value);
           switch(r.condition) {
-              case '>': return value > r.value;
-              case '<': return value < r.value;
-              case '>=': return value >= r.value;
-              case '<=': return value <= r.value;
-              case '===': return value === r.value;
-              case '!==': return value !== r.value;
+              case '>': return val > r.value;
+              case '<': return val < r.value;
+              case '>=': return val >= r.value;
+              case '<=': return val <= r.value;
+              case '===': return val === r.value || String(val) === String(r.value);
+              case '!==': return val !== r.value && String(val) !== String(r.value);
               default: return false;
           }
       });
@@ -115,6 +99,8 @@ const MetricWidget = ({
     orange: 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
     purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
     red: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
+    yellow: 'bg-yellow-50 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
+    gray: 'bg-slate-50 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400'
   };
 
   return (

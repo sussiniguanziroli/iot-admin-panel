@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { doc, onSnapshot, setDoc, collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -24,6 +24,33 @@ export const DashboardProvider = ({ children }) => {
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
+
+  const widgetDataStore = useRef({
+    metric: {},
+    gauge: {},
+    chart: {},
+    switch: {}
+  });
+
+  const getWidgetData = (type, id) => {
+    return widgetDataStore.current[type]?.[id];
+  };
+
+  const setWidgetData = (type, id, data) => {
+    if (!widgetDataStore.current[type]) {
+      widgetDataStore.current[type] = {};
+    }
+    widgetDataStore.current[type][id] = data;
+  };
+
+  const clearWidgetData = () => {
+    widgetDataStore.current = {
+      metric: {},
+      gauge: {},
+      chart: {},
+      switch: {}
+    };
+  };
 
   useEffect(() => {
     if (userProfile?.tenantId) {
@@ -63,6 +90,7 @@ export const DashboardProvider = ({ children }) => {
     if (!viewedTenantId || !activeLocation) {
         setMachines([]); 
         disconnect();
+        clearWidgetData();
         return;
     }
 
@@ -131,11 +159,15 @@ export const DashboardProvider = ({ children }) => {
   const switchTenant = (id) => {
       setViewedTenantId(id);
       setActiveLocation(null); 
+      clearWidgetData();
   };
 
   const switchLocation = (locationId) => {
       const target = locations.find(l => l.id === locationId);
-      if (target) setActiveLocation(target);
+      if (target) {
+        setActiveLocation(target);
+        clearWidgetData();
+      }
   };
 
   const addMachine = (name) => {
@@ -201,7 +233,8 @@ export const DashboardProvider = ({ children }) => {
       widgets, addWidget, removeWidget, reorderWidgets, addMachine, removeMachine,
       loadProfile, loadingData,
       viewedTenantId, switchTenant,
-      locations, activeLocation, switchLocation, updateWidget
+      locations, activeLocation, switchLocation, updateWidget,
+      getWidgetData, setWidgetData
     }}>
       {children}
     </DashboardContext.Provider>

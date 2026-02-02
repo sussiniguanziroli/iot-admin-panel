@@ -7,7 +7,7 @@ export const useSubscriptions = () => {
   const { subscribeToTopic, unsubscribeFromTopic, lastMessage } = useMqtt();
   const subscribedTopicsRef = useRef(new Set());
 
-  const addSubscription = useCallback((topic, qos = 0) => {
+  const addSubscription = useCallback((topic, qos = 0, setAsActive = true) => {
     if (!topic.trim()) {
       return { success: false, error: 'Topic cannot be empty' };
     }
@@ -21,7 +21,7 @@ export const useSubscriptions = () => {
     }
 
     const newSub = {
-      id: `sub-${Date.now()}`,
+      id: `sub-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       topic,
       qos,
       messageCount: 0,
@@ -34,7 +34,11 @@ export const useSubscriptions = () => {
       subscribeToTopic(topic);
       subscribedTopicsRef.current.add(topic);
       setSubscriptions(prev => [...prev, newSub]);
-      setActiveTopicId(newSub.id);
+      
+      if (setAsActive) {
+        setActiveTopicId(newSub.id);
+      }
+      
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
