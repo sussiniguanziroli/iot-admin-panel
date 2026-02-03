@@ -1,0 +1,847 @@
+{
+    "version": "3.0",
+    "timestamp": "2026-02-03",
+    "project": "Noja Power Recloser - Full Control",
+    "description": "Dashboard completo con todas las protecciones controlables y telemetría del Noja Power",
+    
+    "mqtt_config": {
+      "host": "d117b2b403d34e1cbc27488bb7782e37.s1.eu.hivemq.cloud",
+      "port": 8884,
+      "protocol": "wss",
+      "username": "sussiniguanziroli",
+      "password": "SolFrut2025",
+      "backend_port": 8883,
+      "backend_protocol": "mqtts"
+    },
+  
+    "machines": [
+      { "id": "noja_general", "name": "Control Principal" },
+      { "id": "noja_electric", "name": "Mediciones Eléctricas" },
+      { "id": "noja_protections", "name": "Estado de Protecciones" },
+      { "id": "noja_diagnostics", "name": "Diagnóstico" }
+    ],
+  
+    "widgets": [
+  
+      {
+        "id": "status_main",
+        "machineId": "noja_general",
+        "type": "metric",
+        "title": "Estado Reconectador",
+        "topic": "noja/status",
+        "dataKey": "status",
+        "iconKey": "zap",
+        "color": "blue",
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": "CLOSED", "color": "green" },
+              { "condition": "===", "value": "OPEN", "color": "red" },
+              { "condition": "===", "value": "UNKNOWN", "color": "orange" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "cmd_trip",
+        "machineId": "noja_general",
+        "type": "switch",
+        "title": "TRIP ALL PHASES",
+        "topic": "noja/status",
+        "commandTopic": "noja/control",
+        "dataKey": "status",
+        "commandFormat": "json",
+        "onPayloadJSON": { "cmd": "trip" },
+        "offPayloadJSON": { "cmd": "trip" },
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "confirmationMode": { "enabled": true, "type": "double-click" }
+        }
+      },
+  
+      {
+        "id": "cmd_close",
+        "machineId": "noja_general",
+        "type": "switch",
+        "title": "CLOSE ALL PHASES",
+        "topic": "noja/status",
+        "commandTopic": "noja/control",
+        "dataKey": "status",
+        "commandFormat": "json",
+        "onPayloadJSON": { "cmd": "close" },
+        "offPayloadJSON": { "cmd": "close" },
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "confirmationMode": { "enabled": true, "type": "double-click" }
+        }
+      },
+  
+      {
+        "id": "switch_prot",
+        "machineId": "noja_general",
+        "type": "switch",
+        "title": "Protecciones",
+        "topic": "noja/protections_status",
+        "commandTopic": "noja/control",
+        "dataKey": "protections",
+        "commandFormat": "json",
+        "onPayloadJSON": { "cmd": "set_prot", "state": "ON" },
+        "offPayloadJSON": { "cmd": "set_prot", "state": "OFF" },
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "switch_ef",
+        "machineId": "noja_general",
+        "type": "switch",
+        "title": "Earth Fault (EF)",
+        "topic": "noja/protections_status",
+        "commandTopic": "noja/control",
+        "dataKey": "earth_fault",
+        "commandFormat": "json",
+        "onPayloadJSON": { "cmd": "set_ef", "state": "ON" },
+        "offPayloadJSON": { "cmd": "set_ef", "state": "OFF" },
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "switch_sef",
+        "machineId": "noja_general",
+        "type": "switch",
+        "title": "Sensitive Earth Fault (SEF)",
+        "topic": "noja/protections_status",
+        "commandTopic": "noja/control",
+        "dataKey": "sef",
+        "commandFormat": "json",
+        "onPayloadJSON": { "cmd": "set_sef", "state": "ON" },
+        "offPayloadJSON": { "cmd": "set_sef", "state": "OFF" },
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "switch_ar",
+        "machineId": "noja_general",
+        "type": "switch",
+        "title": "Auto Reclose (AR)",
+        "topic": "noja/protections_status",
+        "commandTopic": "noja/control",
+        "dataKey": "autoreclosing",
+        "commandFormat": "json",
+        "onPayloadJSON": { "cmd": "set_ar", "state": "ON" },
+        "offPayloadJSON": { "cmd": "set_ar", "state": "OFF" },
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "switch_ll",
+        "machineId": "noja_general",
+        "type": "switch",
+        "title": "Live Line (LL)",
+        "topic": "noja/protections_status",
+        "commandTopic": "noja/control",
+        "dataKey": "live_line",
+        "commandFormat": "json",
+        "onPayloadJSON": { "cmd": "set_ll", "state": "ON" },
+        "offPayloadJSON": { "cmd": "set_ll", "state": "OFF" },
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "switch_clp",
+        "machineId": "noja_general",
+        "type": "switch",
+        "title": "Cold Load Pickup (CLP)",
+        "topic": "noja/protections_status",
+        "commandTopic": "noja/control",
+        "dataKey": "cold_load_pickup",
+        "commandFormat": "json",
+        "onPayloadJSON": { "cmd": "set_clp", "state": "ON" },
+        "offPayloadJSON": { "cmd": "set_clp", "state": "OFF" },
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "gauge_ia",
+        "machineId": "noja_electric",
+        "type": "gauge",
+        "title": "Corriente Fase A",
+        "topic": "noja/telemetry",
+        "dataKey": "currents.ia",
+        "min": 0,
+        "max": 1000,
+        "width": "third",
+        "height": "md",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 600, "color": "#10b981" },
+              { "min": 600.1, "max": 800, "color": "#f59e0b" },
+              { "min": 800.1, "max": 1000, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "gauge_ib",
+        "machineId": "noja_electric",
+        "type": "gauge",
+        "title": "Corriente Fase B",
+        "topic": "noja/telemetry",
+        "dataKey": "currents.ib",
+        "min": 0,
+        "max": 1000,
+        "width": "third",
+        "height": "md",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 600, "color": "#10b981" },
+              { "min": 600.1, "max": 800, "color": "#f59e0b" },
+              { "min": 800.1, "max": 1000, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "gauge_ic",
+        "machineId": "noja_electric",
+        "type": "gauge",
+        "title": "Corriente Fase C",
+        "topic": "noja/telemetry",
+        "dataKey": "currents.ic",
+        "min": 0,
+        "max": 1000,
+        "width": "third",
+        "height": "md",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 600, "color": "#10b981" },
+              { "min": 600.1, "max": 800, "color": "#f59e0b" },
+              { "min": 800.1, "max": 1000, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "gauge_in",
+        "machineId": "noja_electric",
+        "type": "gauge",
+        "title": "Corriente Neutro",
+        "topic": "noja/telemetry",
+        "dataKey": "currents.in",
+        "min": 0,
+        "max": 500,
+        "width": "third",
+        "height": "md",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 100, "color": "#10b981" },
+              { "min": 100.1, "max": 300, "color": "#f59e0b" },
+              { "min": 300.1, "max": 500, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "chart_currents",
+        "machineId": "noja_electric",
+        "type": "chart",
+        "title": "Corrientes Trifásicas - Tiempo Real",
+        "topic": "noja/telemetry",
+        "dataKey": "currents.ia",
+        "width": "full",
+        "height": "lg",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "multiLine": {
+            "enabled": true,
+            "lines": [
+              { "label": "Fase A", "dataKey": "currents.ia", "color": "#ef4444", "strokeWidth": 2 },
+              { "label": "Fase B", "dataKey": "currents.ib", "color": "#f59e0b", "strokeWidth": 2 },
+              { "label": "Fase C", "dataKey": "currents.ic", "color": "#3b82f6", "strokeWidth": 2 },
+              { "label": "Neutro", "dataKey": "currents.in", "color": "#a855f7", "strokeWidth": 2 }
+            ]
+          },
+          "gradientColors": { "enabled": false },
+          "axisConfig": { "xAxis": { "show": false } }
+        }
+      },
+  
+      {
+        "id": "gauge_ua",
+        "machineId": "noja_electric",
+        "type": "gauge",
+        "title": "Tensión Fase A",
+        "topic": "noja/telemetry",
+        "dataKey": "voltages.ua",
+        "min": 0,
+        "max": 15000,
+        "width": "third",
+        "height": "md",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 11000, "color": "#ef4444" },
+              { "min": 11000.1, "max": 13800, "color": "#10b981" },
+              { "min": 13800.1, "max": 15000, "color": "#f59e0b" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "gauge_ub",
+        "machineId": "noja_electric",
+        "type": "gauge",
+        "title": "Tensión Fase B",
+        "topic": "noja/telemetry",
+        "dataKey": "voltages.ub",
+        "min": 0,
+        "max": 15000,
+        "width": "third",
+        "height": "md",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 11000, "color": "#ef4444" },
+              { "min": 11000.1, "max": 13800, "color": "#10b981" },
+              { "min": 13800.1, "max": 15000, "color": "#f59e0b" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "gauge_uc",
+        "machineId": "noja_electric",
+        "type": "gauge",
+        "title": "Tensión Fase C",
+        "topic": "noja/telemetry",
+        "dataKey": "voltages.uc",
+        "min": 0,
+        "max": 15000,
+        "width": "third",
+        "height": "md",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 11000, "color": "#ef4444" },
+              { "min": 11000.1, "max": 13800, "color": "#10b981" },
+              { "min": 13800.1, "max": 15000, "color": "#f59e0b" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "metric_kw",
+        "machineId": "noja_electric",
+        "type": "metric",
+        "title": "Potencia Activa",
+        "topic": "noja/telemetry",
+        "dataKey": "power.kw",
+        "unit": "kW",
+        "iconKey": "zap",
+        "color": "green",
+        "width": "third",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "metric_kvar",
+        "machineId": "noja_electric",
+        "type": "metric",
+        "title": "Potencia Reactiva",
+        "topic": "noja/telemetry",
+        "dataKey": "power.kvar",
+        "unit": "kVAr",
+        "iconKey": "activity",
+        "color": "orange",
+        "width": "third",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "metric_kva",
+        "machineId": "noja_electric",
+        "type": "metric",
+        "title": "Potencia Aparente",
+        "topic": "noja/telemetry",
+        "dataKey": "power.kva",
+        "unit": "kVA",
+        "iconKey": "zap",
+        "color": "purple",
+        "width": "third",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "metric_pf",
+        "machineId": "noja_electric",
+        "type": "metric",
+        "title": "Factor de Potencia",
+        "topic": "noja/telemetry",
+        "dataKey": "power.pf",
+        "unit": "",
+        "iconKey": "activity",
+        "color": "blue",
+        "width": "third",
+        "height": "sm",
+        "payloadParsingMode": "simple"
+      },
+  
+      {
+        "id": "metric_freq",
+        "machineId": "noja_electric",
+        "type": "metric",
+        "title": "Frecuencia",
+        "topic": "noja/telemetry",
+        "dataKey": "power.freq",
+        "unit": "Hz",
+        "iconKey": "activity",
+        "color": "blue",
+        "width": "third",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "dataTransformation": {
+            "enabled": true,
+            "multiplier": 0.01,
+            "offset": 0,
+            "decimals": 2
+          }
+        }
+      },
+  
+      {
+        "id": "pickup_oc1",
+        "machineId": "noja_protections",
+        "type": "metric",
+        "title": "Pickup OC1+",
+        "topic": "noja/protections",
+        "dataKey": "pickups.oc1",
+        "iconKey": "zap",
+        "color": "yellow",
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": true, "color": "red" },
+              { "condition": "===", "value": false, "color": "green" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "pickup_oc2",
+        "machineId": "noja_protections",
+        "type": "metric",
+        "title": "Pickup OC2+",
+        "topic": "noja/protections",
+        "dataKey": "pickups.oc2",
+        "iconKey": "zap",
+        "color": "yellow",
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": true, "color": "red" },
+              { "condition": "===", "value": false, "color": "green" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "pickup_oc3",
+        "machineId": "noja_protections",
+        "type": "metric",
+        "title": "Pickup OC3+",
+        "topic": "noja/protections",
+        "dataKey": "pickups.oc3",
+        "iconKey": "zap",
+        "color": "yellow",
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": true, "color": "red" },
+              { "condition": "===", "value": false, "color": "green" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "pickup_ef1",
+        "machineId": "noja_protections",
+        "type": "metric",
+        "title": "Pickup EF1+",
+        "topic": "noja/protections",
+        "dataKey": "pickups.ef1",
+        "iconKey": "zap",
+        "color": "orange",
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": true, "color": "red" },
+              { "condition": "===", "value": false, "color": "green" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "pickup_ef2",
+        "machineId": "noja_protections",
+        "type": "metric",
+        "title": "Pickup EF2+",
+        "topic": "noja/protections",
+        "dataKey": "pickups.ef2",
+        "iconKey": "zap",
+        "color": "orange",
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": true, "color": "red" },
+              { "condition": "===", "value": false, "color": "green" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "pickup_ef3",
+        "machineId": "noja_protections",
+        "type": "metric",
+        "title": "Pickup EF3+",
+        "topic": "noja/protections",
+        "dataKey": "pickups.ef3",
+        "iconKey": "zap",
+        "color": "orange",
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": true, "color": "red" },
+              { "condition": "===", "value": false, "color": "green" }
+            ]
+          }
+        }
+      },
+  
+      {
+        "id": "pickup_sef_pos",
+        "machineId": "noja_protections",
+        "type": "metric",
+        "title": "Pickup SEF+",
+        "topic": "noja/protections",
+        "dataKey": "pickups.sef_pos",
+        "iconKey": "zap",
+        "color": "purple",
+        "width": "half",
+        "height": "sm",
+        "payloadParsingMode": "simple",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": true, "color": "red" },
+              { "condition": "===", "value": false, "color": "green" }
+            ]
+            }
+            }
+            },
+            {
+              "id": "pickup_sef_neg",
+              "machineId": "noja_protections",
+              "type": "metric",
+              "title": "Pickup SEF-",
+              "topic": "noja/protections",
+              "dataKey": "pickups.sef_neg",
+              "iconKey": "zap",
+              "color": "purple",
+              "width": "half",
+              "height": "sm",
+              "payloadParsingMode": "simple",
+              "customConfig": {
+                "conditionalFormatting": {
+                  "enabled": true,
+                  "rules": [
+                    { "condition": "===", "value": true, "color": "red" },
+                    { "condition": "===", "value": false, "color": "green" }
+                  ]
+                }
+              }
+            },
+            
+            {
+              "id": "trips_oc_a",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "Trips OC Fase A",
+              "topic": "noja/telemetry",
+              "dataKey": "counters.oc_a_trips",
+              "iconKey": "alert-circle",
+              "color": "red",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple"
+            },
+            
+            {
+              "id": "trips_oc_b",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "Trips OC Fase B",
+              "topic": "noja/telemetry",
+              "dataKey": "counters.oc_b_trips",
+              "iconKey": "alert-circle",
+              "color": "orange",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple"
+            },
+            
+            {
+              "id": "trips_oc_c",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "Trips OC Fase C",
+              "topic": "noja/telemetry",
+              "dataKey": "counters.oc_c_trips",
+              "iconKey": "alert-circle",
+              "color": "blue",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple"
+            },
+            
+            {
+              "id": "trips_ef",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "Trips Earth Fault",
+              "topic": "noja/telemetry",
+              "dataKey": "counters.ef_trips",
+              "iconKey": "alert-triangle",
+              "color": "orange",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple"
+            },
+            
+            {
+              "id": "trips_sef",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "Trips SEF",
+              "topic": "noja/telemetry",
+              "dataKey": "counters.sef_trips",
+              "iconKey": "alert-triangle",
+              "color": "purple",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple"
+            },
+            
+            {
+              "id": "trips_uv",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "Trips Undervoltage",
+              "topic": "noja/telemetry",
+              "dataKey": "counters.uv_trips",
+              "iconKey": "alert-triangle",
+              "color": "yellow",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple"
+            },
+            
+            {
+              "id": "trips_uf",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "Trips Underfreq",
+              "topic": "noja/telemetry",
+              "dataKey": "counters.uf_trips",
+              "iconKey": "alert-triangle",
+              "color": "blue",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple"
+            },
+            
+            {
+              "id": "trips_inmax",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "Trips Inmax",
+              "topic": "noja/telemetry",
+              "dataKey": "counters.inmax_trip",
+              "iconKey": "alert-triangle",
+              "color": "red",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple"
+            },
+            
+            {
+              "id": "alarm_can",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "CAN Bus",
+              "topic": "noja/alarms",
+              "dataKey": "can_malfunction",
+              "iconKey": "alert-triangle",
+              "color": "red",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple",
+              "customConfig": {
+                "conditionalFormatting": {
+                  "enabled": true,
+                  "rules": [
+                    { "condition": "===", "value": true, "color": "red" },
+                    { "condition": "===", "value": false, "color": "green" }
+                  ]
+                }
+              }
+            },
+            
+            {
+              "id": "alarm_ac",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "AC Supply",
+              "topic": "noja/alarms",
+              "dataKey": "ac_off",
+              "iconKey": "zap-off",
+              "color": "orange",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple",
+              "customConfig": {
+                "conditionalFormatting": {
+                  "enabled": true,
+                  "rules": [
+                    { "condition": "===", "value": true, "color": "orange" },
+                    { "condition": "===", "value": false, "color": "green" }
+                  ]
+                }
+              }
+            },
+            
+            {
+              "id": "alarm_battery",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "Battery",
+              "topic": "noja/alarms",
+              "dataKey": "battery_off",
+              "iconKey": "battery",
+              "color": "red",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple",
+              "customConfig": {
+                "conditionalFormatting": {
+                  "enabled": true,
+                  "rules": [
+                    { "condition": "===", "value": true, "color": "red" },
+                    { "condition": "===", "value": false, "color": "green" }
+                  ]
+                }
+              }
+            },
+            
+            {
+              "id": "alarm_caps",
+              "machineId": "noja_diagnostics",
+              "type": "metric",
+              "title": "SIM Caps",
+              "topic": "noja/alarms",
+              "dataKey": "sim_caps_not_charged",
+              "iconKey": "zap-off",
+              "color": "yellow",
+              "width": "third",
+              "height": "sm",
+              "payloadParsingMode": "simple",
+              "customConfig": {
+                "conditionalFormatting": {
+                  "enabled": true,
+                  "rules": [
+                    { "condition": "===", "value": true, "color": "yellow" },
+                    { "condition": "===", "value": false, "color": "green" }
+                  ]
+                }
+              }
+            }
+            ]
+            }

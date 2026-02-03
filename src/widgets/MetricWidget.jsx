@@ -20,7 +20,10 @@ const MetricWidget = ({
   payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
 }) => {
   const { getWidgetData, setWidgetData } = useDashboard();
-  const [value, setValue] = useState(() => getWidgetData('metric', id) || '--');
+  const [value, setValue] = useState(() => {
+    const cached = getWidgetData('metric', id);
+    return cached !== null && cached !== undefined ? cached : '--';
+  });
   const [lastUpdated, setLastUpdated] = useState(null);
   const hasSubscribed = useRef(false);
   
@@ -77,14 +80,26 @@ const MetricWidget = ({
   
   if (advConfig?.conditionalFormatting?.enabled) {
       const rule = advConfig.conditionalFormatting.rules.find(r => {
-          const val = typeof value === 'string' ? value : Number(value);
+          let val = value;
+          let ruleVal = r.value;
+
+          if (typeof ruleVal === 'boolean') {
+              if (val === 'true') val = true;
+              else if (val === 'false') val = false;
+          } else if (typeof ruleVal === 'number') {
+              val = Number(val);
+          } else {
+              val = String(val);
+              ruleVal = String(ruleVal);
+          }
+
           switch(r.condition) {
-              case '>': return val > r.value;
-              case '<': return val < r.value;
-              case '>=': return val >= r.value;
-              case '<=': return val <= r.value;
-              case '===': return val === r.value || String(val) === String(r.value);
-              case '!==': return val !== r.value && String(val) !== String(r.value);
+              case '>': return val > ruleVal;
+              case '<': return val < ruleVal;
+              case '>=': return val >= ruleVal;
+              case '<=': return val <= ruleVal;
+              case '===': return val === ruleVal;
+              case '!==': return val !== ruleVal;
               default: return false;
           }
       });
@@ -103,6 +118,12 @@ const MetricWidget = ({
     gray: 'bg-slate-50 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400'
   };
 
+  const getDisplayValue = () => {
+    if (typeof value === 'boolean') return value ? 'ON' : 'OFF';
+    if (value === null || value === undefined) return '--';
+    return value;
+  };
+
   return (
     <BaseWidget 
       id={id} 
@@ -115,7 +136,7 @@ const MetricWidget = ({
         <div>
           <div className="text-4xl font-bold text-slate-700 dark:text-white tracking-tight">
              {advConfig?.dataTransformation?.prefix || ''}
-             {value} 
+             {getDisplayValue()} 
              {advConfig?.dataTransformation?.suffix || ''}
              <span className="text-lg text-slate-400 font-medium ml-1">{unit}</span>
           </div>
