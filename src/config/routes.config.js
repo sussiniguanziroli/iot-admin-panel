@@ -10,7 +10,7 @@ export const ROUTE_CONFIG = {
         '/app/dashboard',
         '/app/analytics',
         '/app/users',
-        '/app/audit-logs',      // ✅ Super admin ve TODOS los logs
+        '/app/audit-logs',
         '/app/profile'
       ],
       layout: 'SuperAdminLayout'
@@ -23,8 +23,9 @@ export const ROUTE_CONFIG = {
         '/app/dashboard',
         '/app/analytics',
         '/app/users',
-        '/app/billing', 
-        '/app/audit-logs',      // ✅ Admin ve logs de SU tenant
+        '/app/billing',
+        '/app/my-company',
+        '/app/audit-logs',
         '/app/profile'
       ],
       layout: 'AdminLayout'

@@ -1,32 +1,32 @@
+// src/features/profile/pages/MyCompanyPage.jsx
+
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
-import { useDashboard } from '../../dashboard/context/DashboardContext';
-import { Building2, ArrowLeft, Eye } from 'lucide-react';
+import { useAuth } from '../../auth/context/AuthContext';
+import { Building2, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-import OverviewTab from '../components/tabs/OverviewTab';
-import LocationsTab from '../components/tabs/LocationsTab';
-import UsersTab from '../components/tabs/UsersTab';
-import BillingTab from '../components/tabs/BillingTab';
+import OverviewTab from '../../tenant-management/components/tabs/OverviewTab';
+import LocationsTab from '../../tenant-management/components/tabs/LocationsTab';
+import UsersTab from '../../tenant-management/components/tabs/UsersTab';
+import BillingTab from '../../tenant-management/components/tabs/BillingTab';
 
-const TenantDetails = () => {
-  const { tenantId } = useParams();
+const MyCompanyPage = () => {
+  const { userProfile } = useAuth();
   const navigate = useNavigate();
-  const { switchTenant } = useDashboard();
-
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     const fetchTenant = async () => {
+      if (!userProfile?.tenantId) return;
+      
       try {
-        const tenantSnap = await getDoc(doc(db, 'tenants', tenantId));
+        const tenantSnap = await getDoc(doc(db, 'tenants', userProfile.tenantId));
         if (tenantSnap.exists()) {
           setTenant({ id: tenantSnap.id, ...tenantSnap.data() });
-        } else {
-          navigate('/app/tenants');
         }
       } catch (e) {
         console.error('Error fetching tenant:', e);
@@ -35,12 +35,7 @@ const TenantDetails = () => {
       }
     };
     fetchTenant();
-  }, [tenantId, navigate]);
-
-  const handleImpersonate = () => {
-    switchTenant(tenantId);
-    navigate('/app/dashboard');
-  };
+  }, [userProfile]);
 
   const handleTenantUpdate = (updatedData) => {
     setTenant(prev => ({ ...prev, ...updatedData }));
@@ -51,7 +46,23 @@ const TenantDetails = () => {
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Loading Configuration...</p>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Loading Company...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!tenant) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-8 text-center">
+          <Building2 size={48} className="mx-auto text-red-500 mb-4" />
+          <h2 className="text-xl font-bold text-red-700 dark:text-red-300 mb-2">
+            Company Not Found
+          </h2>
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Your account is not associated with any company. Contact support.
+          </p>
         </div>
       </div>
     );
@@ -70,7 +81,7 @@ const TenantDetails = () => {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/app/tenants')}
+            onClick={() => navigate('/app/home')}
             className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
           >
             <ArrowLeft size={22} className="text-slate-500" />
@@ -80,18 +91,11 @@ const TenantDetails = () => {
               <Building2 className="text-blue-600" size={32} />
               {tenant.name}
             </h1>
-            <p className="text-slate-500 text-sm font-mono mt-1">
-              Tenant ID: {tenant.id}
+            <p className="text-slate-500 text-sm mt-1">
+              My Company Settings
             </p>
           </div>
         </div>
-        <button
-          onClick={handleImpersonate}
-          className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/30 transition-all"
-        >
-          <Eye size={20} />
-          <span className="hidden sm:inline">View Dashboard</span>
-        </button>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden mb-6">
@@ -115,23 +119,23 @@ const TenantDetails = () => {
       <div className="animate-in fade-in">
         {activeTab === 'overview' && (
           <OverviewTab 
-            tenantId={tenantId} 
+            tenantId={tenant.id} 
             tenantData={tenant} 
             onUpdate={handleTenantUpdate}
           />
         )}
         {activeTab === 'locations' && (
-          <LocationsTab tenantId={tenantId} />
+          <LocationsTab tenantId={tenant.id} />
         )}
         {activeTab === 'users' && (
-          <UsersTab tenantId={tenantId} tenantName={tenant.name} />
+          <UsersTab tenantId={tenant.id} tenantName={tenant.name} />
         )}
         {activeTab === 'billing' && (
-  <BillingTab tenantId={tenantId} currentPlan={tenant?.plan || 'free'} />
-)}
+          <BillingTab tenantId={tenant.id} />
+        )}
       </div>
     </div>
   );
 };
 
-export default TenantDetails;
+export default MyCompanyPage;

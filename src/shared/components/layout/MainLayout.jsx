@@ -105,6 +105,12 @@ const MainLayout = () => {
       show: can.viewAnalytics
     },
     { 
+      path: '/app/my-company', 
+      label: 'My Company', 
+      icon: <Building2 size={20} />,
+      show: isAdmin && !isSuperAdmin
+    },
+    { 
       path: '/app/users', 
       label: 'Users', 
       icon: <Users size={20} />,

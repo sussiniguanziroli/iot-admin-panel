@@ -37,7 +37,14 @@ export const usePermissions = () => {
     exportProfile: hasPermission('EXPORT_PROFILE'),
     
     viewAuditLogs: hasPermission('VIEW_AUDIT_LOGS'),
-    viewAllAuditLogs: hasPermission('VIEW_ALL_AUDIT_LOGS')
+    viewAllAuditLogs: hasPermission('VIEW_ALL_AUDIT_LOGS'),
+    
+    changeTenantPlan: hasPermission('CHANGE_TENANT_PLAN'),
+    changeTenantStatus: hasPermission('CHANGE_TENANT_STATUS'),
+    viewBilling: hasPermission('VIEW_BILLING'),
+    requestPlanUpgrade: hasPermission('REQUEST_PLAN_UPGRADE'),
+    editCompanyBasicInfo: hasPermission('EDIT_COMPANY_BASIC_INFO'),
+    editTenantSensitiveData: hasPermission('EDIT_TENANT_SENSITIVE_DATA')
   };
   
   return { 
