@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { validateInvitation, markInvitationUsed, logAction } from '../../../services/AdminService';
+import { sendWelcomeEmail } from '../../../services/EmailService';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db, auth, googleProvider } from '../../../firebase/config';
-import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { ShieldCheck, User, Lock, ArrowRight, Loader2, AlertTriangle, Building2, Chrome } from 'lucide-react';
+import { createUserWithEmailAndPassword, signInWithPopup, sendEmailVerification } from 'firebase/auth';
+import { ShieldCheck, User, Lock, ArrowRight, Loader2, AlertTriangle, Building2, Chrome, Mail } from 'lucide-react';
 
 const Register = () => {
   const [searchParams] = useSearchParams();
@@ -18,6 +19,7 @@ const Register = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
 
   useEffect(() => {
     const checkToken = async () => {
@@ -62,14 +64,15 @@ const Register = () => {
         tenantId: inviteData.tenantId,
         createdAt: new Date().toISOString(),
         invitedBy: inviteData.createdBy,
-        authProvider: 'email'
+        authProvider: 'email',
+        emailVerified: false
       });
 
       await markInvitationUsed(token, user.uid);
       await logAction({ uid: user.uid, email: formData.email }, 'REGISTERED_VIA_INVITE', inviteData.tenantId);
 
-      alert("✅ Welcome aboard! Redirecting to dashboard...");
-      navigate('/app/dashboard');
+      await sendEmailVerification(user);
+      setShowVerificationMessage(true);
 
     } catch (err) {
       console.error('Registration Error:', err);
@@ -78,7 +81,6 @@ const Register = () => {
       if (err.code === 'auth/weak-password') msg = "Password must be at least 6 characters.";
       if (err.message) msg = err.message;
       setError(msg);
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -112,11 +114,14 @@ const Register = () => {
         createdAt: new Date().toISOString(),
         invitedBy: inviteData.createdBy,
         authProvider: 'google',
-        photoURL: user.photoURL || null
+        photoURL: user.photoURL || null,
+        emailVerified: true
       });
 
       await markInvitationUsed(token, user.uid);
       await logAction({ uid: user.uid, email: user.email }, 'REGISTERED_VIA_INVITE_GOOGLE', inviteData.tenantId);
+
+      await sendWelcomeEmail(user.email, user.displayName, inviteData.tenantId, inviteData.role);
 
       alert("✅ Welcome aboard! Redirecting to dashboard...");
       navigate('/app/dashboard');
@@ -161,6 +166,32 @@ const Register = () => {
               className="w-full py-3 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-xl font-bold hover:opacity-90 transition-opacity"
             >
                 Back to Login
+            </button>
+        </div>
+    </div>
+  );
+
+  if (showVerificationMessage) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl text-center max-w-md w-full">
+            <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/30 text-blue-500 dark:text-blue-400 rounded-full flex items-center justify-center mb-4">
+                <Mail size={32}/>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-3">Verificá tu email</h2>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
+              Te enviamos un email de verificación a <strong>{formData.email}</strong>. 
+              Hacé click en el enlace del email para activar tu cuenta.
+            </p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Una vez verificado, recibirás un email de bienvenida y podrás acceder al dashboard.
+              </p>
+            </div>
+            <button 
+              onClick={() => navigate('/login')} 
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors"
+            >
+              Ir al Login
             </button>
         </div>
     </div>

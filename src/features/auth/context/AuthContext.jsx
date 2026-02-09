@@ -5,7 +5,8 @@ import {
   signOut, 
   onAuthStateChanged,
   signInWithPopup,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendEmailVerification as firebaseSendEmailVerification
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../../../firebase/config';
@@ -62,6 +63,19 @@ export const AuthProvider = ({ children }) => {
       return createUserWithEmailAndPassword(auth, email, password);
   };
 
+  const sendEmailVerification = async () => {
+    if (auth.currentUser) {
+      try {
+        await firebaseSendEmailVerification(auth.currentUser);
+        return { success: true };
+      } catch (error) {
+        console.error('Error sending verification email:', error);
+        return { success: false, error: error.message };
+      }
+    }
+    return { success: false, error: 'No user logged in' };
+  };
+
   const checkPermission = (permission) => {
     return hasPermission(userProfile?.role, permission);
   };
@@ -75,6 +89,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     resetPassword,
     registerSuperAdmin,
+    sendEmailVerification,
     hasPermission: checkPermission
   };
 
