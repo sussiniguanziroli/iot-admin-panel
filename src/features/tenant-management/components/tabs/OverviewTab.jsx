@@ -10,10 +10,11 @@ import {
   Building2, Save, Package, Calendar, TrendingUp, 
   Crown, Zap, CheckCircle, AlertCircle, Lock, Info
 } from 'lucide-react';
+import { usePlans } from '../../../../shared/hooks/usePlans';
 
 const OverviewTab = ({ tenantId, tenantData, onUpdate }) => {
   const { can, isSuperAdmin } = usePermissions();
-  
+  const { getPlanById } = usePlans();
   const [formData, setFormData] = useState({
     name: tenantData?.name || '',
     plan: tenantData?.plan || 'basic',

@@ -221,7 +221,7 @@ export const sendInvitationEmail = async (toEmail, adminName, organizationName, 
 
 export const sendWelcomeEmail = async (toEmail, userName, organizationName, role) => {
   try {
-    const dashboardLink = `${window.location.origin}/app/dashboard`;
+    const dashboardLink = `https://iot-admin-panel.netlify.app/app/dashboard`;
     
     const html = getWelcomeTemplate({
       USER_NAME: userName,

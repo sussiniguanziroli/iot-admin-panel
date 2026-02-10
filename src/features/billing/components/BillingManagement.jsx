@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
+import { usePlans } from '../../../shared/hooks/usePlans';
 import { 
   CreditCard, Package, TrendingUp, AlertCircle, CheckCircle, 
   Activity, Users, MapPin, Layout, Zap, Database, Calendar, Lock
 } from 'lucide-react';
 
 const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
+  const { getPlanById, loading: plansLoading } = usePlans();
   const [billingData, setBillingData] = useState(null);
   const [realUsage, setRealUsage] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,7 @@ const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
     if (tenantId) fetchBillingData();
   }, [tenantId]);
 
-  if (loading) {
+  if (loading || plansLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-4">
@@ -76,7 +78,8 @@ const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
   }
 
   const { subscription, limits, usage } = billingData;
-  const planName = subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1);
+  const planData = getPlanById(subscription.plan);
+  const planName = planData?.displayName || subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1);
   const isActive = subscription.status === 'active';
   const daysUntilRenewal = Math.ceil((new Date(subscription.currentPeriodEnd) - new Date()) / (1000 * 60 * 60 * 24));
 

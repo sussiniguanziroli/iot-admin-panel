@@ -3,14 +3,17 @@
 import React, { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
-import { PLANS, getPlanById } from '../../../config/plans';
+import { usePlans } from '../../../shared/hooks/usePlans';
 import Swal from 'sweetalert2';
 import {
     X, ArrowRight, ArrowLeft, CheckCircle, Crown, Zap,
     TrendingUp, Users, MapPin, Layout, Database, CreditCard, Sparkles
 } from 'lucide-react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }) => {
+    const { plans, getPlanById, loading: plansLoading } = usePlans();
+    
     const [currentStep, setCurrentStep] = useState(1);
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -28,47 +31,42 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
 
     const handleUpgrade = async () => {
         setIsProcessing(true);
-
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
+      
         try {
-            const newPlan = getPlanById(selectedPlan);
-            const now = new Date().toISOString();
-
-            await updateDoc(doc(db, 'tenants', tenantId), {
-                plan: selectedPlan,
-                limits: newPlan.limits,
-                subscription: {
-                    plan: selectedPlan,
-                    status: 'active',
-                    currentPeriodStart: now,
-                    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                    nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                    lastPaymentDate: now,
-                    paymentMethod: paymentData.cardNumber ? {
-                        type: 'card',
-                        last4: paymentData.cardNumber.slice(-4),
-                        brand: 'visa'
-                    } : null
-                },
-                updatedAt: now
-            });
-
-            setCurrentStep(4);
-            if (onSuccess) onSuccess();
-        } catch (e) {
-            console.error(e);
-            Swal.fire({
-                icon: 'error',
-                title: 'Upgrade Failed',
-                text: 'Failed to upgrade plan. Please try again.',
-                confirmButtonColor: '#3b82f6'
-            });
+          // 👈 IMPORTANTE: Especificar la región 'us-central1' aquí
+          const functions = getFunctions(undefined, 'us-central1'); 
+          const upgradePlanFn = httpsCallable(functions, 'upgradePlan');
+          
+          const result = await upgradePlanFn({
+            tenantId,
+            planId: selectedPlan
+          });
+      
+          console.log('✅ Upgrade result:', result.data);
+      
+          setCurrentStep(4);
+          if (onSuccess) onSuccess();
+      
+          Swal.fire({
+            icon: 'success',
+            title: 'Plan Upgraded!',
+            text: result.data.message,
+            timer: 2000,
+            showConfirmButton: false
+          });
+        } catch (error) {
+          console.error('❌ Upgrade error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Upgrade Failed',
+            text: error.message || 'Failed to upgrade plan. Please try again.',
+            confirmButtonColor: '#3b82f6'
+          });
         } finally {
-            setIsProcessing(false);
+          setIsProcessing(false);
         }
     };
-
+    
     const handleClose = () => {
         setCurrentStep(1);
         setSelectedPlan(null);
@@ -82,6 +80,19 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
     };
 
     if (!isOpen) return null;
+
+    if (plansLoading) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-8">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p className="text-slate-600 dark:text-slate-400">Loading plans...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const currentPlanData = getPlanById(currentPlan);
     const selectedPlanData = selectedPlan ? getPlanById(selectedPlan) : null;
@@ -169,7 +180,7 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {Object.values(PLANS).filter(plan => plan.id !== currentPlan).map(plan => {
+                                {Object.values(plans).filter(plan => plan.id !== currentPlan).map(plan => {
                                     const isSelected = selectedPlan === plan.id;
                                     const isUpgrade = plan.price > currentPlanData.price;
 
@@ -258,7 +269,6 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
                             </div>
                         </div>
                     )}
-
                     {currentStep === 2 && selectedPlanData && (
                         <div className="space-y-6 animate-in fade-in">
                             <div className="text-center mb-6">
@@ -510,7 +520,6 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
                         </div>
                     )}
                 </div>
-
                 {currentStep < 4 && (
                     <div className="flex-shrink-0 px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t-2 border-slate-200 dark:border-slate-700 flex justify-between items-center">
                         <button
