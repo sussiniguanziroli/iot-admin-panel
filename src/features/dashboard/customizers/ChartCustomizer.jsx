@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Sliders, TrendingUp, Plus, Trash2, Code, Layers } from 'lucide-react';
+import { X, Save, Sliders, TrendingUp, Code } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 
 const ChartCustomizer = ({ isOpen, onClose, onSave, widget }) => {
     const [customConfig, setCustomConfig] = useState({
-        multiSeries: {
-            enabled: false,
-            series: []
-        },
         lineStyle: {
             type: 'monotone',
             strokeWidth: 2,
-            smooth: true,
             dots: false
         },
         gradientColors: {
@@ -23,27 +18,12 @@ const ChartCustomizer = ({ isOpen, onClose, onSave, widget }) => {
         },
         axisConfig: {
             xAxis: {
-                show: false,
-                label: '',
-                gridLines: false
+                show: false
             },
             yAxis: {
                 show: true,
-                label: '',
-                gridLines: true,
-                autoScale: true,
-                min: null,
-                max: null
+                gridLines: true
             }
-        },
-        dataAggregation: {
-            enabled: false,
-            method: 'average',
-            windowSize: 10
-        },
-        alertZones: {
-            enabled: false,
-            zones: []
         },
         dataRetention: {
             maxPoints: 50,
@@ -59,7 +39,7 @@ const ChartCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                     : widget.customConfig;
                 setCustomConfig({ ...customConfig, ...parsed });
             } catch (e) {
-                console.error('Error parsing customConfig:', e);
+                console.error('[ChartCustomizer] Error parsing customConfig:', e);
             }
         }
     }, [widget]);
@@ -74,8 +54,8 @@ const ChartCustomizer = ({ isOpen, onClose, onSave, widget }) => {
           <p class="text-slate-600">Advanced chart settings will be applied.</p>
           <div class="bg-slate-50 p-3 rounded-lg mt-3 text-sm">
             <p><strong>Widget:</strong> ${widget.title}</p>
-            <p class="text-xs text-slate-500 mt-1">Multi-series: ${customConfig.multiSeries.enabled ? 'Enabled' : 'Disabled'}</p>
-            <p class="text-xs text-slate-500">Alert zones: ${customConfig.alertZones.enabled ? 'Enabled' : 'Disabled'}</p>
+            <p class="text-xs text-slate-500 mt-1">Line style: ${customConfig.lineStyle.type}</p>
+            <p class="text-xs text-slate-500">Max points: ${customConfig.dataRetention.maxPoints}</p>
           </div>
         </div>
       `,
@@ -121,76 +101,6 @@ const ChartCustomizer = ({ isOpen, onClose, onSave, widget }) => {
         }
     };
 
-    const addSeries = () => {
-        setCustomConfig(prev => ({
-            ...prev,
-            multiSeries: {
-                ...prev.multiSeries,
-                series: [
-                    ...prev.multiSeries.series,
-                    { topic: '', dataKey: 'value', color: '#0ea5e9', label: 'Series ' + (prev.multiSeries.series.length + 1) }
-                ]
-            }
-        }));
-    };
-
-    const removeSeries = (index) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            multiSeries: {
-                ...prev.multiSeries,
-                series: prev.multiSeries.series.filter((_, i) => i !== index)
-            }
-        }));
-    };
-
-    const updateSeries = (index, field, value) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            multiSeries: {
-                ...prev.multiSeries,
-                series: prev.multiSeries.series.map((s, i) =>
-                    i === index ? { ...s, [field]: value } : s
-                )
-            }
-        }));
-    };
-
-    const addAlertZone = () => {
-        setCustomConfig(prev => ({
-            ...prev,
-            alertZones: {
-                ...prev.alertZones,
-                zones: [
-                    ...prev.alertZones.zones,
-                    { yStart: 0, yEnd: 50, color: '#fef3c7', label: 'Warning Zone' }
-                ]
-            }
-        }));
-    };
-
-    const removeAlertZone = (index) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            alertZones: {
-                ...prev.alertZones,
-                zones: prev.alertZones.zones.filter((_, i) => i !== index)
-            }
-        }));
-    };
-
-    const updateAlertZone = (index, field, value) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            alertZones: {
-                ...prev.alertZones,
-                zones: prev.alertZones.zones.map((zone, i) =>
-                    i === index ? { ...zone, [field]: value } : zone
-                )
-            }
-        }));
-    };
-
     return (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white dark:bg-slate-800 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
@@ -211,81 +121,6 @@ const ChartCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                 </div>
 
                 <div className="overflow-y-auto flex-1 p-6 space-y-6">
-
-                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <Layers size={20} className="text-orange-600 dark:text-orange-400" />
-                                <h3 className="font-bold text-slate-800 dark:text-white">Multiple Series</h3>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={customConfig.multiSeries.enabled}
-                                    onChange={(e) => setCustomConfig(prev => ({
-                                        ...prev,
-                                        multiSeries: { ...prev.multiSeries, enabled: e.target.checked }
-                                    }))}
-                                    className="sr-only peer"
-                                />
-                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-orange-600"></div>
-                            </label>
-                        </div>
-
-                        {customConfig.multiSeries.enabled && (
-                            <div className="space-y-3">
-                                {customConfig.multiSeries.series.map((series, index) => (
-                                    <div key={index} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={series.label}
-                                                onChange={(e) => updateSeries(index, 'label', e.target.value)}
-                                                placeholder="Series label"
-                                                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
-                                            />
-                                            <input
-                                                type="color"
-                                                value={series.color}
-                                                onChange={(e) => updateSeries(index, 'color', e.target.value)}
-                                                className="w-12 h-10 cursor-pointer rounded-lg border-2 border-slate-200 dark:border-slate-700"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeSeries(index)}
-                                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input
-                                                type="text"
-                                                value={series.topic}
-                                                onChange={(e) => updateSeries(index, 'topic', e.target.value)}
-                                                placeholder="MQTT Topic"
-                                                className="px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-orange-500 outline-none"
-                                            />
-                                            <input
-                                                type="text"
-                                                value={series.dataKey}
-                                                onChange={(e) => updateSeries(index, 'dataKey', e.target.value)}
-                                                placeholder="Data Key"
-                                                className="px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-orange-500 outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={addSeries}
-                                    className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-500 hover:border-orange-400 hover:text-orange-600 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Plus size={16} /> Add Series
-                                </button>
-                            </div>
-                        )}
-                    </div>
 
                     <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
                         <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
@@ -412,82 +247,6 @@ const ChartCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-slate-800 dark:text-white">Alert Zones (Y-Axis Overlays)</h3>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={customConfig.alertZones.enabled}
-                                    onChange={(e) => setCustomConfig(prev => ({
-                                        ...prev,
-                                        alertZones: { ...prev.alertZones, enabled: e.target.checked }
-                                    }))}
-                                    className="sr-only peer"
-                                />
-                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-orange-600"></div>
-                            </label>
-                        </div>
-
-                        {customConfig.alertZones.enabled && (
-                            <div className="space-y-3">
-                                {customConfig.alertZones.zones.map((zone, index) => (
-                                    <div key={index} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={zone.label}
-                                                onChange={(e) => updateAlertZone(index, 'label', e.target.value)}
-                                                placeholder="Zone label"
-                                                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
-                                            />
-                                            <input
-                                                type="color"
-                                                value={zone.color}
-                                                onChange={(e) => updateAlertZone(index, 'color', e.target.value)}
-                                                className="w-12 h-10 cursor-pointer rounded-lg border-2 border-slate-200 dark:border-slate-700"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeAlertZone(index)}
-                                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Y Start</label>
-                                                <input
-                                                    type="number"
-                                                    value={zone.yStart}
-                                                    onChange={(e) => updateAlertZone(index, 'yStart', parseFloat(e.target.value))}
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Y End</label>
-                                                <input
-                                                    type="number"
-                                                    value={zone.yEnd}
-                                                    onChange={(e) => updateAlertZone(index, 'yEnd', parseFloat(e.target.value))}
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={addAlertZone}
-                                    className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-500 hover:border-orange-400 hover:text-orange-600 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Plus size={16} /> Add Alert Zone
-                                </button>
-                            </div>
-                        )}
                     </div>
 
                     <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -626,9 +385,11 @@ const ChartCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                     >
                         <Save size={18} />
                         Save Advanced Config
-                    </button>   </div>
+                    </button>
+                </div>
             </div>
         </div>
     );
 };
+
 export default ChartCustomizer;

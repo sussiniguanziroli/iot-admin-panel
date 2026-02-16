@@ -1,29 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Sliders, Power, Shield, Bell, Clock, Plus, Trash2, Code, Lock } from 'lucide-react';
+import { X, Save, Sliders, Power, Shield, Lock, Code } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
+import UserSelector from '../components/UserSelector';
 
 const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
     const [customConfig, setCustomConfig] = useState({
         confirmationMode: {
             enabled: true,
             type: 'single-click',
-            requireDoubleClick: false,
             holdDuration: 1000
         },
         interlocks: {
             enabled: false,
             rules: []
-        },
-        feedback: {
-            haptic: false,
-            sound: false,
-            soundType: 'beep',
-            visualFeedback: true
-        },
-        scheduling: {
-            enabled: false,
-            schedules: []
         },
         stateTracking: {
             enabled: true,
@@ -36,9 +26,12 @@ const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
             timeout: 5000,
             showErrors: true
         },
-        customStates: {
+        accessControl: {
             enabled: false,
-            states: []
+            mode: 'role-based',
+            allowedRoles: ['admin', 'operator'],
+            allowedUserIds: [],
+            denyMessage: ''
         }
     });
 
@@ -66,7 +59,7 @@ const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
           <div class="bg-slate-50 p-3 rounded-lg mt-3 text-sm">
             <p><strong>Widget:</strong> ${widget.title}</p>
             <p class="text-xs text-slate-500 mt-1">Confirmation: ${customConfig.confirmationMode.type}</p>
-            <p class="text-xs text-slate-500">Interlocks: ${customConfig.interlocks.enabled ? customConfig.interlocks.rules.length + ' rules' : 'Disabled'}</p>
+            <p class="text-xs text-slate-500">Access Control: ${customConfig.accessControl.enabled ? 'Enabled' : 'Disabled'}</p>
           </div>
         </div>
       `,
@@ -152,81 +145,6 @@ const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
         }));
     };
 
-    const addSchedule = () => {
-        setCustomConfig(prev => ({
-            ...prev,
-            scheduling: {
-                ...prev.scheduling,
-                schedules: [
-                    ...prev.scheduling.schedules,
-                    {
-                        action: 'turn_on',
-                        time: '08:00',
-                        days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-                        enabled: true
-                    }
-                ]
-            }
-        }));
-    };
-
-    const removeSchedule = (index) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            scheduling: {
-                ...prev.scheduling,
-                schedules: prev.scheduling.schedules.filter((_, i) => i !== index)
-            }
-        }));
-    };
-
-    const updateSchedule = (index, field, value) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            scheduling: {
-                ...prev.scheduling,
-                schedules: prev.scheduling.schedules.map((schedule, i) =>
-                    i === index ? { ...schedule, [field]: value } : schedule
-                )
-            }
-        }));
-    };
-
-    const addCustomState = () => {
-        setCustomConfig(prev => ({
-            ...prev,
-            customStates: {
-                ...prev.customStates,
-                states: [
-                    ...prev.customStates.states,
-                    { value: 'loading', label: 'Loading', color: '#f59e0b', icon: 'loader' }
-                ]
-            }
-        }));
-    };
-
-    const removeCustomState = (index) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            customStates: {
-                ...prev.customStates,
-                states: prev.customStates.states.filter((_, i) => i !== index)
-            }
-        }));
-    };
-
-    const updateCustomState = (index, field, value) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            customStates: {
-                ...prev.customStates,
-                states: prev.customStates.states.map((state, i) =>
-                    i === index ? { ...state, [field]: value } : state
-                )
-            }
-        }));
-    };
-
     return (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white dark:bg-slate-800 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
@@ -282,8 +200,8 @@ const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                                                 confirmationMode: { ...prev.confirmationMode, type: mode.value }
                                             }))}
                                             className={`p-3 rounded-lg border-2 transition-all text-left ${customConfig.confirmationMode.type === mode.value
-                                                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                                                    : 'border-slate-200 dark:border-slate-700 hover:border-emerald-300'
+                                                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                                                : 'border-slate-200 dark:border-slate-700 hover:border-emerald-300'
                                                 }`}
                                         >
                                             <p className="font-bold text-sm text-slate-800 dark:text-white">{mode.label}</p>
@@ -313,6 +231,176 @@ const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Lock size={20} className="text-emerald-600 dark:text-emerald-400" />
+                                <h3 className="font-bold text-slate-800 dark:text-white">Access Control</h3>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={customConfig.accessControl?.enabled || false}
+                                    onChange={(e) => setCustomConfig(prev => ({
+                                        ...prev,
+                                        accessControl: {
+                                            enabled: e.target.checked,
+                                            mode: prev.accessControl?.mode || 'role-based',
+                                            allowedRoles: prev.accessControl?.allowedRoles || ['admin', 'operator'],
+                                            allowedUserIds: prev.accessControl?.allowedUserIds || [],
+                                            denyMessage: prev.accessControl?.denyMessage || ''
+                                        }
+                                    }))}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                            </label>
+                        </div>
+
+                        {customConfig.accessControl?.enabled && (
+                            <div className="space-y-4">
+
+                                <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30 p-3 rounded-lg">
+                                    <p className="text-xs text-yellow-700 dark:text-yellow-400 flex items-center gap-2">
+                                        <span className="text-base">⚠️</span>
+                                        <span><strong>Note:</strong> Super Admin and Admin roles always have full access regardless of these settings.</span>
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">
+                                        Control Mode
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {[
+                                            { value: 'role-based', label: 'By Role', desc: 'Control by user role', icon: '👥' },
+                                            { value: 'user-based', label: 'By User', desc: 'Specific users only', icon: '👤' }
+                                        ].map(mode => (
+                                            <button
+                                                key={mode.value}
+                                                type="button"
+                                                onClick={() => setCustomConfig(prev => ({
+                                                    ...prev,
+                                                    accessControl: { ...prev.accessControl, mode: mode.value }
+                                                }))}
+                                                className={`p-3 rounded-lg border-2 transition-all text-left ${customConfig.accessControl?.mode === mode.value
+                                                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                                                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-emerald-300'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-lg">{mode.icon}</span>
+                                                    <p className="font-bold text-sm">{mode.label}</p>
+                                                </div>
+                                                <p className="text-xs opacity-70">{mode.desc}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {customConfig.accessControl?.mode === 'role-based' && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">
+                                            Allowed Roles
+                                        </label>
+                                        <div className="space-y-2">
+                                            {[
+                                                { value: 'admin', label: 'Admin', desc: 'Full access (always enabled)', badge: 'Always Allowed', disabled: true },
+                                                { value: 'operator', label: 'Operator', desc: 'Can control equipment', badge: null, disabled: false },
+                                                { value: 'viewer', label: 'Viewer', desc: 'Read-only by default', badge: null, disabled: false }
+                                            ].map(role => {
+                                                const isChecked = role.disabled || (customConfig.accessControl?.allowedRoles?.includes(role.value) || false);
+
+                                                return (
+                                                    <label
+                                                        key={role.value}
+                                                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${role.disabled
+                                                            ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-not-allowed'
+                                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 cursor-pointer'
+                                                            }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={(e) => {
+                                                                const current = customConfig.accessControl?.allowedRoles || [];
+                                                                const updated = e.target.checked
+                                                                    ? [...current, role.value]
+                                                                    : current.filter(r => r !== role.value);
+
+                                                                setCustomConfig(prev => ({
+                                                                    ...prev,
+                                                                    accessControl: { ...prev.accessControl, allowedRoles: updated }
+                                                                }));
+                                                            }}
+                                                            className="w-4 h-4 text-emerald-600 bg-slate-100 border-slate-300 rounded focus:ring-emerald-500 disabled:opacity-50"
+                                                            disabled={role.disabled}
+                                                        />
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{role.label}</p>
+                                                                {role.badge && (
+                                                                    <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold rounded-full">
+                                                                        {role.badge}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-slate-500 dark:text-slate-400">{role.desc}</p>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {customConfig.accessControl?.mode === 'user-based' && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">
+                                            Authorized Users
+                                        </label>
+                                        <p className="text-xs text-slate-500 mb-3">
+                                            Select specific users who can control this switch. Only selected users will be able to interact with this equipment.
+                                        </p>
+
+                                        <UserSelector
+                                            selectedUserIds={customConfig.accessControl?.allowedUserIds || []}
+                                            onChange={(userIds) => setCustomConfig(prev => ({
+                                                ...prev,
+                                                accessControl: { ...prev.accessControl, allowedUserIds: userIds }
+                                            }))}
+                                        />
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                        Access Denied Message
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={customConfig.accessControl?.denyMessage || ''}
+                                        onChange={(e) => setCustomConfig(prev => ({
+                                            ...prev,
+                                            accessControl: { ...prev.accessControl, denyMessage: e.target.value }
+                                        }))}
+                                        placeholder="e.g., Solo operadores autorizados pueden controlar este equipo"
+                                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        This message will be shown when a user without access tries to control the switch
+                                    </p>
+                                </div>
+
+                                <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 p-3 rounded-lg">
+                                    <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                                        <strong>💡 Tip:</strong> Access control adds an extra security layer. Users without permission will see a lock icon and cannot interact with the switch.
+                                    </p>
+                                </div>
+
+                            </div>
+                        )}
                     </div>
 
                     <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -348,7 +436,7 @@ const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                                                 onClick={() => removeInterlock(index)}
                                                 className="ml-auto p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                             >
-                                                <Trash2 size={16} />
+                                                <X size={16} />
                                             </button>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
@@ -402,182 +490,7 @@ const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                                     onClick={addInterlock}
                                     className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors flex items-center justify-center gap-2"
                                 >
-                                    <Plus size={16} /> Add Interlock Rule
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <h3 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                            <Bell size={20} className="text-emerald-600 dark:text-emerald-400" />
-                            Feedback & Notifications
-                        </h3>
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={customConfig.feedback.haptic}
-                                    onChange={(e) => setCustomConfig(prev => ({
-                                        ...prev,
-                                        feedback: { ...prev.feedback, haptic: e.target.checked }
-                                    }))}
-                                    className="w-4 h-4 text-emerald-600 bg-slate-100 border-slate-300 rounded focus:ring-emerald-500"
-                                />
-                                <label className="text-sm text-slate-700 dark:text-slate-300">Haptic Feedback (Mobile)</label>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={customConfig.feedback.visualFeedback}
-                                    onChange={(e) => setCustomConfig(prev => ({
-                                        ...prev,
-                                        feedback: { ...prev.feedback, visualFeedback: e.target.checked }
-                                    }))}
-                                    className="w-4 h-4 text-emerald-600 bg-slate-100 border-slate-300 rounded focus:ring-emerald-500"
-                                />
-                                <label className="text-sm text-slate-700 dark:text-slate-300">Visual Feedback (Animations)</label>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={customConfig.feedback.sound}
-                                    onChange={(e) => setCustomConfig(prev => ({
-                                        ...prev,
-                                        feedback: { ...prev.feedback, sound: e.target.checked }
-                                    }))}
-                                    className="w-4 h-4 text-emerald-600 bg-slate-100 border-slate-300 rounded focus:ring-emerald-500"
-                                />
-                                <label className="text-sm text-slate-700 dark:text-slate-300">Sound Feedback</label>
-                            </div>
-
-                            {customConfig.feedback.sound && (
-                                <div className="ml-6">
-                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                        Sound Type
-                                    </label>
-                                    <select
-                                        value={customConfig.feedback.soundType}
-                                        onChange={(e) => setCustomConfig(prev => ({
-                                            ...prev,
-                                            feedback: { ...prev.feedback, soundType: e.target.value }
-                                        }))}
-                                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    >
-                                        <option value="beep">Beep</option>
-                                        <option value="click">Click</option>
-                                        <option value="success">Success</option>
-                                        <option value="error">Error</option>
-                                    </select>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <Clock size={20} className="text-emerald-600 dark:text-emerald-400" />
-                                <h3 className="font-bold text-slate-800 dark:text-white">Scheduling (Timer)</h3>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={customConfig.scheduling.enabled}
-                                    onChange={(e) => setCustomConfig(prev => ({
-                                        ...prev,
-                                        scheduling: { ...prev.scheduling, enabled: e.target.checked }
-                                    }))}
-                                    className="sr-only peer"
-                                />
-                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
-                            </label>
-                        </div>
-
-                        {customConfig.scheduling.enabled && (
-                            <div className="space-y-3">
-                                <p className="text-xs text-slate-500">Automatically turn on/off at scheduled times</p>
-                                {customConfig.scheduling.schedules.map((schedule, index) => (
-                                    <div key={index} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Clock size={16} className="text-emerald-600" />
-                                            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Schedule {index + 1}</span>
-                                            <label className="ml-auto relative inline-flex items-center cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={schedule.enabled}
-                                                    onChange={(e) => updateSchedule(index, 'enabled', e.target.checked)}
-                                                    className="sr-only peer"
-                                                />
-                                                <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-300 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-                                            </label>
-                                            <button
-                                                type="button"
-                                                onClick={() => removeSchedule(index)}
-                                                className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Action</label>
-                                                <select
-                                                    value={schedule.action}
-                                                    onChange={(e) => updateSchedule(index, 'action', e.target.value)}
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                                >
-                                                    <option value="turn_on">Turn ON</option>
-                                                    <option value="turn_off">Turn OFF</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Time</label>
-                                                <input
-                                                    type="time"
-                                                    value={schedule.time}
-                                                    onChange={(e) => updateSchedule(index, 'time', e.target.value)}
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-slate-500 mb-1">Days</label>
-                                            <div className="flex gap-1">
-                                                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, dayIndex) => {
-                                                    const dayValue = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][dayIndex];
-                                                    const isSelected = schedule.days.includes(dayValue);
-                                                    return (
-                                                        <button
-                                                            key={day}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const newDays = isSelected
-                                                                    ? schedule.days.filter(d => d !== dayValue)
-                                                                    : [...schedule.days, dayValue];
-                                                                updateSchedule(index, 'days', newDays);
-                                                            }}
-                                                            className={`flex-1 py-1 text-xs font-bold rounded border-2 transition-all ${isSelected
-                                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 text-emerald-700 dark:text-emerald-400'
-                                                                    : 'border-slate-200 dark:border-slate-700 text-slate-400'
-                                                                }`}
-                                                        >
-                                                            {day}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={addSchedule}
-                                    className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Plus size={16} /> Add Schedule
+                                    <span className="text-lg">+</span> Add Interlock Rule
                                 </button>
                             </div>
                         )}
@@ -628,7 +541,9 @@ const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                                     </div>
                                 </>
                             )}
-                        </div></div>
+                        </div>
+                    </div>
+
                     <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
                         <h3 className="font-bold text-slate-800 dark:text-white mb-4">Error Handling</h3>
                         <div className="space-y-4">
@@ -683,70 +598,6 @@ const SwitchCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-slate-800 dark:text-white">Custom States (Beyond ON/OFF)</h3>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={customConfig.customStates.enabled}
-                                    onChange={(e) => setCustomConfig(prev => ({
-                                        ...prev,
-                                        customStates: { ...prev.customStates, enabled: e.target.checked }
-                                    }))}
-                                    className="sr-only peer"
-                                />
-                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
-                            </label>
-                        </div>
-
-                        {customConfig.customStates.enabled && (
-                            <div className="space-y-3">
-                                <p className="text-xs text-slate-500">Define additional states (e.g., loading, error, pending)</p>
-                                {customConfig.customStates.states.map((state, index) => (
-                                    <div key={index} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={state.value}
-                                                onChange={(e) => updateCustomState(index, 'value', e.target.value)}
-                                                placeholder="State value"
-                                                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                                            />
-                                            <input
-                                                type="text"
-                                                value={state.label}
-                                                onChange={(e) => updateCustomState(index, 'label', e.target.value)}
-                                                placeholder="Display label"
-                                                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                                            />
-                                            <input
-                                                type="color"
-                                                value={state.color}
-                                                onChange={(e) => updateCustomState(index, 'color', e.target.value)}
-                                                className="w-12 h-10 cursor-pointer rounded-lg border-2 border-slate-200 dark:border-slate-700"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeCustomState(index)}
-                                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={addCustomState}
-                                    className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Plus size={16} /> Add Custom State
-                                </button>
-                            </div>
-                        )}
                     </div>
 
                     <details className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900/30 rounded-xl">

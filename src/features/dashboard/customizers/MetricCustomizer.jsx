@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Sliders, TrendingUp, AlertTriangle, Palette, Calculator, Code } from 'lucide-react';
+import { X, Save, Sliders, Calculator, Palette, Code } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 
@@ -7,7 +7,6 @@ const MetricCustomizer = ({ isOpen, onClose, onSave, widget }) => {
   const [customConfig, setCustomConfig] = useState({
     dataTransformation: {
       enabled: false,
-      formula: 'value',
       multiplier: 1,
       offset: 0,
       decimals: 2,
@@ -17,19 +16,6 @@ const MetricCustomizer = ({ isOpen, onClose, onSave, widget }) => {
     conditionalFormatting: {
       enabled: false,
       rules: []
-    },
-    multiSource: {
-      enabled: false,
-      topics: []
-    },
-    alerts: {
-      enabled: false,
-      thresholds: []
-    },
-    animation: {
-      enabled: true,
-      duration: 300,
-      easing: 'ease-in-out'
     }
   });
 
@@ -56,7 +42,8 @@ const MetricCustomizer = ({ isOpen, onClose, onSave, widget }) => {
           <p class="text-slate-600">Advanced settings will be applied to this widget.</p>
           <div class="bg-slate-50 p-3 rounded-lg mt-3 text-sm">
             <p><strong>Widget:</strong> ${widget.title}</p>
-            <p class="text-xs text-slate-500 mt-1">These settings take precedence over basic configuration.</p>
+            <p class="text-xs text-slate-500 mt-1">Data transformation: ${customConfig.dataTransformation.enabled ? 'Enabled' : 'Disabled'}</p>
+            <p class="text-xs text-slate-500">Conditional formatting: ${customConfig.conditionalFormatting.enabled ? customConfig.conditionalFormatting.rules.length + ' rules' : 'Disabled'}</p>
           </div>
         </div>
       `,
@@ -109,7 +96,7 @@ const MetricCustomizer = ({ isOpen, onClose, onSave, widget }) => {
         ...prev.conditionalFormatting,
         rules: [
           ...prev.conditionalFormatting.rules,
-          { condition: '>', value: 0, color: 'red', icon: 'alert' }
+          { condition: '>', value: 0, color: 'red' }
         ]
       }
     }));
@@ -132,41 +119,6 @@ const MetricCustomizer = ({ isOpen, onClose, onSave, widget }) => {
         ...prev.conditionalFormatting,
         rules: prev.conditionalFormatting.rules.map((rule, i) => 
           i === index ? { ...rule, [field]: value } : rule
-        )
-      }
-    }));
-  };
-
-  const addAlertThreshold = () => {
-    setCustomConfig(prev => ({
-      ...prev,
-      alerts: {
-        ...prev.alerts,
-        thresholds: [
-          ...prev.alerts.thresholds,
-          { condition: '>', value: 100, message: 'Alert triggered', severity: 'warning' }
-        ]
-      }
-    }));
-  };
-
-  const removeAlertThreshold = (index) => {
-    setCustomConfig(prev => ({
-      ...prev,
-      alerts: {
-        ...prev.alerts,
-        thresholds: prev.alerts.thresholds.filter((_, i) => i !== index)
-      }
-    }));
-  };
-
-  const updateAlertThreshold = (index, field, value) => {
-    setCustomConfig(prev => ({
-      ...prev,
-      alerts: {
-        ...prev.alerts,
-        thresholds: prev.alerts.thresholds.map((threshold, i) => 
-          i === index ? { ...threshold, [field]: value } : threshold
         )
       }
     }));
@@ -248,23 +200,6 @@ const MetricCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
-                    Custom Formula (JavaScript)
-                  </label>
-                  <input
-                    type="text"
-                    value={customConfig.dataTransformation.formula}
-                    onChange={(e) => setCustomConfig(prev => ({
-                      ...prev,
-                      dataTransformation: { ...prev.dataTransformation, formula: e.target.value }
-                    }))}
-                    placeholder="e.g., value * 2 + 10"
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-purple-500 outline-none"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">Use "value" as the variable. Example: (value * 1.8) + 32</p>
-                </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
@@ -312,6 +247,12 @@ const MetricCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                       className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
                     />
                   </div>
+                </div>
+
+                <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-900/30 p-3 rounded-lg">
+                  <p className="text-xs text-purple-700 dark:text-purple-400">
+                    <strong>Formula:</strong> <code className="bg-white dark:bg-slate-800 px-1 py-0.5 rounded">(value × multiplier + offset).toFixed(decimals)</code>
+                  </p>
                 </div>
               </div>
             )}
@@ -393,86 +334,6 @@ const MetricCustomizer = ({ isOpen, onClose, onSave, widget }) => {
             )}
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={20} className="text-purple-600 dark:text-purple-400" />
-                <h3 className="font-bold text-slate-800 dark:text-white">Alerts & Notifications</h3>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={customConfig.alerts.enabled}
-                  onChange={(e) => setCustomConfig(prev => ({
-                    ...prev,
-                    alerts: { ...prev.alerts, enabled: e.target.checked }
-                  }))}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-purple-600"></div>
-              </label>
-            </div>
-
-            {customConfig.alerts.enabled && (
-              <div className="space-y-3">
-                {customConfig.alerts.thresholds.map((threshold, index) => (
-                  <div key={index} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-500">IF value</span>
-                      <select
-                        value={threshold.condition}
-                        onChange={(e) => updateAlertThreshold(index, 'condition', e.target.value)}
-                        className="px-2 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                      >
-                        <option value=">">{'>'}</option>
-                        <option value=">=">{'≥'}</option>
-                        <option value="<">{'<'}</option>
-                        <option value="<=">{'≤'}</option>
-                        <option value="===">{'='}</option>
-                      </select>
-                      <input
-                        type="number"
-                        value={threshold.value}
-                        onChange={(e) => updateAlertThreshold(index, 'value', parseFloat(e.target.value))}
-                        className="w-24 px-2 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                      />
-                      <select
-                        value={threshold.severity}
-                        onChange={(e) => updateAlertThreshold(index, 'severity', e.target.value)}
-                        className="px-2 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                      >
-                        <option value="info">Info</option>
-                        <option value="warning">Warning</option>
-                        <option value="error">Error</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => removeAlertThreshold(index)}
-                        className="ml-auto p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      value={threshold.message}
-                      onChange={(e) => updateAlertThreshold(index, 'message', e.target.value)}
-                      placeholder="Alert message"
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                    />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addAlertThreshold}
-                  className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-500 hover:border-purple-400 hover:text-purple-600 transition-colors"
-                >
-                  + Add Alert
-                </button>
-              </div>
-            )}
-          </div>
-
           <details className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900/30 rounded-xl">
             <summary className="px-4 py-3 cursor-pointer font-bold text-sm text-orange-700 dark:text-orange-400 flex items-center gap-2 hover:bg-orange-100 dark:hover:bg-orange-900/20 transition-colors rounded-xl">
               <Code size={16} />
@@ -488,9 +349,7 @@ const MetricCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                 onChange={(e) => {
                   try {
                     setCustomConfig(JSON.parse(e.target.value));
-                  } catch (err) {
-                    
-                  }
+                  } catch (err) {}
                 }}
                 rows={10}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-orange-200 dark:border-orange-900/30 rounded-lg text-xs font-mono focus:ring-2 focus:ring-orange-500 outline-none text-slate-900 dark:text-white"

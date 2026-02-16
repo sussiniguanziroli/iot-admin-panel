@@ -19,18 +19,8 @@ const GaugeCustomizer = ({ isOpen, onClose, onSave, widget }) => {
             count: 5,
             showLabels: true
         },
-        animation: {
-            enabled: true,
-            duration: 800,
-            easing: 'ease-out'
-        },
-        thresholds: {
-            enabled: false,
-            values: []
-        },
         dataTransformation: {
             enabled: false,
-            formula: 'value',
             multiplier: 1,
             offset: 0
         }
@@ -136,41 +126,6 @@ const GaugeCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                 ...prev.colorZones,
                 zones: prev.colorZones.zones.map((zone, i) =>
                     i === index ? { ...zone, [field]: value } : zone
-                )
-            }
-        }));
-    };
-
-    const addThreshold = () => {
-        setCustomConfig(prev => ({
-            ...prev,
-            thresholds: {
-                ...prev.thresholds,
-                values: [
-                    ...prev.thresholds.values,
-                    { value: 50, label: 'Warning', showLine: true, lineColor: '#f59e0b' }
-                ]
-            }
-        }));
-    };
-
-    const removeThreshold = (index) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            thresholds: {
-                ...prev.thresholds,
-                values: prev.thresholds.values.filter((_, i) => i !== index)
-            }
-        }));
-    };
-
-    const updateThreshold = (index, field, value) => {
-        setCustomConfig(prev => ({
-            ...prev,
-            thresholds: {
-                ...prev.thresholds,
-                values: prev.thresholds.values.map((threshold, i) =>
-                    i === index ? { ...threshold, [field]: value } : threshold
                 )
             }
         }));
@@ -390,138 +345,6 @@ const GaugeCustomizer = ({ isOpen, onClose, onSave, widget }) => {
 
                     <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-slate-800 dark:text-white">Threshold Lines</h3>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={customConfig.thresholds.enabled}
-                                    onChange={(e) => setCustomConfig(prev => ({
-                                        ...prev,
-                                        thresholds: { ...prev.thresholds, enabled: e.target.checked }
-                                    }))}
-                                    className="sr-only peer"
-                                />
-                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-
-                        {customConfig.thresholds.enabled && (
-                            <div className="space-y-3">
-                                <p className="text-xs text-slate-500">Add visual threshold markers on the gauge</p>
-                                {customConfig.thresholds.values.map((threshold, index) => (
-                                    <div key={index} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={threshold.label}
-                                                onChange={(e) => updateThreshold(index, 'label', e.target.value)}
-                                                placeholder="Threshold label"
-                                                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                            />
-                                            <input
-                                                type="number"
-                                                value={threshold.value}
-                                                onChange={(e) => updateThreshold(index, 'value', parseFloat(e.target.value))}
-                                                placeholder="Value"
-                                                className="w-24 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                            />
-                                            <input
-                                                type="color"
-                                                value={threshold.lineColor}
-                                                onChange={(e) => updateThreshold(index, 'lineColor', e.target.value)}
-                                                className="w-12 h-10 cursor-pointer rounded-lg border-2 border-slate-200 dark:border-slate-700"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeThreshold(index)}
-                                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                checked={threshold.showLine}
-                                                onChange={(e) => updateThreshold(index, 'showLine', e.target.checked)}
-                                                className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500"
-                                            />
-                                            <label className="text-xs text-slate-600 dark:text-slate-400">Show threshold line</label>
-                                        </div>
-                                    </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={addThreshold}
-                                    className="w-full py-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Plus size={16} /> Add Threshold
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <h3 className="font-bold text-slate-800 dark:text-white mb-4">Animation Settings</h3>
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={customConfig.animation.enabled}
-                                    onChange={(e) => setCustomConfig(prev => ({
-                                        ...prev,
-                                        animation: { ...prev.animation, enabled: e.target.checked }
-                                    }))}
-                                    className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500"
-                                />
-                                <label className="text-sm text-slate-700 dark:text-slate-300">Enable Animations</label>
-                            </div>
-
-                            {customConfig.animation.enabled && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                            Duration (ms)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min="100"
-                                            max="3000"
-                                            step="100"
-                                            value={customConfig.animation.duration}
-                                            onChange={(e) => setCustomConfig(prev => ({
-                                                ...prev,
-                                                animation: { ...prev.animation, duration: parseInt(e.target.value) }
-                                            }))}
-                                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                            Easing
-                                        </label>
-                                        <select
-                                            value={customConfig.animation.easing}
-                                            onChange={(e) => setCustomConfig(prev => ({
-                                                ...prev,
-                                                animation: { ...prev.animation, easing: e.target.value }
-                                            }))}
-                                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                                        >
-                                            <option value="ease">Ease</option>
-                                            <option value="ease-in">Ease In</option>
-                                            <option value="ease-out">Ease Out</option>
-                                            <option value="ease-in-out">Ease In Out</option>
-                                            <option value="linear">Linear</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-slate-800 dark:text-white">Data Transformation</h3>
                             <label className="relative inline-flex items-center cursor-pointer">
                                 <input
@@ -571,22 +394,10 @@ const GaugeCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                                         />
                                     </div>
                                 </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                        Custom Formula (JavaScript)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={customConfig.dataTransformation.formula}
-                                        onChange={(e) => setCustomConfig(prev => ({
-                                            ...prev,
-                                            dataTransformation: { ...prev.dataTransformation, formula: e.target.value }
-                                        }))}
-                                        placeholder="e.g., value * 2 + 10"
-                                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                    <p className="text-xs text-slate-500 mt-1">Use "value" as the variable</p>
+                                <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 p-3 rounded-lg">
+                                    <p className="text-xs text-blue-700 dark:text-blue-400">
+                                        <strong>Formula:</strong> <code className="bg-white dark:bg-slate-800 px-1 py-0.5 rounded">value × multiplier + offset</code>
+                                    </p>
                                 </div>
                             </div>
                         )}
@@ -616,7 +427,8 @@ const GaugeCustomizer = ({ isOpen, onClose, onSave, widget }) => {
                 <div className="border-t border-slate-200 dark:border-slate-700 p-6 bg-slate-50 dark:bg-slate-900/50 flex gap-3">
                     <button
                         type="button"
-                        onClick={handleClose} className="flex-1 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-semibold transition-colors"
+                        onClick={handleClose}
+                        className="flex-1 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-semibold transition-colors"
                     >
                         Cancel
                     </button>
@@ -633,4 +445,5 @@ const GaugeCustomizer = ({ isOpen, onClose, onSave, widget }) => {
         </div>
     );
 };
+
 export default GaugeCustomizer;
