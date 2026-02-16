@@ -1,5 +1,3 @@
-// src/widgets/ChartWidget.jsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
 import { TrendingUp } from 'lucide-react';
@@ -12,9 +10,16 @@ import { parsePayload } from '../shared/utils/payloadParser';
 
 const MAX_DATA_POINTS = 1000;
 
+const HEIGHT_MAP = {
+  sm: 'h-40',
+  md: 'h-64',
+  lg: 'h-96',
+  xl: 'h-[500px]'
+};
+
 const ChartWidget = ({ 
   id, title, topic, dataKey, color = '#3b82f6', 
-  customConfig, onEdit, onCustomize,
+  customConfig, onEdit, onCustomize, height = 'md',
   payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
 }) => {
   const { getChartData, addChartPoint } = useDashboard();
@@ -153,6 +158,8 @@ const ChartWidget = ({
     return null;
   };
 
+  const chartHeightClass = HEIGHT_MAP[height] || HEIGHT_MAP.md;
+
   return (
     <BaseWidget 
       id={id} 
@@ -177,7 +184,7 @@ const ChartWidget = ({
           isCompact={true}
         />
 
-        <div className="h-56">
+        <div className={chartHeightClass}>
           {filteredData.length === 0 ? (
             <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-600">
               <div className="text-center">

@@ -6,9 +6,16 @@ import { useMqtt } from '../../src/features/mqtt/context/MqttContext';
 import { useDashboard } from '../../src/features/dashboard/context/DashboardContext';
 import { parsePayload } from '../shared/utils/payloadParser';
 
+const HEIGHT_MAP = {
+  sm: 'h-32',
+  md: 'h-40',
+  lg: 'h-56',
+  xl: 'h-72'
+};
+
 const GaugeWidget = ({ 
   id, title, topic, dataKey, min = 0, max = 100, 
-  customConfig, onEdit, onCustomize,
+  customConfig, onEdit, onCustomize, height = 'md',
   payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
 }) => {
   const { getWidgetData, setWidgetData } = useDashboard();
@@ -77,6 +84,7 @@ const GaugeWidget = ({
 
   const currentColor = determineColor(value);
   const gaugeData = [{ value: value }, { value: Math.max(max - value, 0) }];
+  const gaugeHeightClass = HEIGHT_MAP[height] || HEIGHT_MAP.md;
 
   return (
     <BaseWidget 
@@ -87,7 +95,7 @@ const GaugeWidget = ({
       onEdit={onEdit} 
       onCustomize={onCustomize}
     >
-      <div className="relative h-40 flex items-end justify-center mt-2">
+      <div className={`relative ${gaugeHeightClass} flex items-end justify-center mt-2`}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie

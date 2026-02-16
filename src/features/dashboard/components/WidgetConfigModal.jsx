@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Settings, Zap, Activity, Box, Droplets, Thermometer, Gauge as GaugeIcon, ToggleLeft, AlertTriangle, Code } from 'lucide-react';
+import { X, Save, Settings, Zap, Activity, Box, Droplets, Thermometer, Gauge as GaugeIcon, ToggleLeft, AlertTriangle, Code, Maximize2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import { validateJsParser } from '../../../shared/utils/payloadParser';
@@ -34,6 +34,12 @@ const HEIGHT_OPTIONS = [
     { value: 'xl', label: 'Extra Large (500px)' }
 ];
 
+const WIDTH_OPTIONS = [
+    { value: 'normal', label: 'Normal (1 column)', description: '1 grid column' },
+    { value: 'double', label: 'Double (2 columns)', description: '2 grid columns' },
+    { value: 'full', label: 'Full Width (3 columns)', description: 'Full row width' }
+];
+
 const WidgetConfigModal = ({ isOpen, onClose, onSave, widget = null, machineId }) => {
     const isEditMode = Boolean(widget);
 
@@ -47,6 +53,7 @@ const WidgetConfigModal = ({ isOpen, onClose, onSave, widget = null, machineId }
         color: 'blue',
         iconKey: 'activity',
         height: 'md',
+        width: 'normal',
         min: '',
         max: '',
         commandFormat: 'text',
@@ -73,6 +80,7 @@ const WidgetConfigModal = ({ isOpen, onClose, onSave, widget = null, machineId }
                 color: widget.color || 'blue',
                 iconKey: widget.iconKey || 'activity',
                 height: widget.height || 'md',
+                width: widget.width || 'normal',
                 min: widget.min !== undefined ? widget.min : '',
                 max: widget.max !== undefined ? widget.max : '',
                 commandFormat: widget.commandFormat || 'text',
@@ -97,6 +105,7 @@ const WidgetConfigModal = ({ isOpen, onClose, onSave, widget = null, machineId }
                 color: 'blue',
                 iconKey: 'activity',
                 height: 'md',
+                width: 'normal',
                 min: '',
                 max: '',
                 commandFormat: 'text',
@@ -195,6 +204,7 @@ const WidgetConfigModal = ({ isOpen, onClose, onSave, widget = null, machineId }
           <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg mt-3 text-sm space-y-1">
             <p><strong>Title:</strong> ${formData.title}</p>
             <p><strong>Type:</strong> ${formData.type}</p>
+            <p><strong>Size:</strong> ${formData.width} × ${formData.height}</p>
             <p class="font-mono text-xs"><strong>Topic:</strong> ${formData.topic}</p>
             <p class="text-xs text-slate-500"><strong>Parsing:</strong> ${formData.payloadParsingMode}</p>
           </div>
@@ -374,6 +384,61 @@ const WidgetConfigModal = ({ isOpen, onClose, onSave, widget = null, machineId }
                                     placeholder="e.g., sol-frut/motor-4/data"
                                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white font-mono text-sm"
                                 />
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Maximize2 size={18} className="text-slate-600 dark:text-slate-400" />
+                                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                    Widget Size
+                                </label>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">
+                                        Width
+                                    </label>
+                                    <div className="space-y-2">
+                                        {WIDTH_OPTIONS.map(option => (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                onClick={() => handleChange('width', option.value)}
+                                                className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
+                                                    formData.width === option.value
+                                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                                        : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
+                                                }`}
+                                            >
+                                                <p className="font-bold text-sm text-slate-900 dark:text-white">
+                                                    {option.label}
+                                                </p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                    {option.description}
+                                                </p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">
+                                        Height
+                                    </label>
+                                    <select
+                                        value={formData.height}
+                                        onChange={(e) => handleChange('height', e.target.value)}
+                                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white appearance-none cursor-pointer"
+                                    >
+                                        {HEIGHT_OPTIONS.map(height => (
+                                            <option key={height.value} value={height.value}>
+                                                {height.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -676,24 +741,7 @@ const WidgetConfigModal = ({ isOpen, onClose, onSave, widget = null, machineId }
                         )}
 
                         {formData.type === 'chart' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                                        Chart Height
-                                    </label>
-                                    <select
-                                        value={formData.height}
-                                        onChange={(e) => handleChange('height', e.target.value)}
-                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white appearance-none cursor-pointer"
-                                    >
-                                        {HEIGHT_OPTIONS.map(height => (
-                                            <option key={height.value} value={height.value}>
-                                                {height.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                                         Min Value

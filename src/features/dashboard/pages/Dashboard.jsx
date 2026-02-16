@@ -273,18 +273,25 @@ const Dashboard = () => {
                     >
                         <SortableContext items={currentWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-min">
-                                {currentWidgets.map((widget) => (<div
-                                    key={widget.id}
-                                    className={widget.width === 'full' ? 'col-span-1 md:col-span-2 lg:col-span-3' : 'col-span-1'}
-                                >
-                                    <WidgetFactory
-                                        widget={widget}
-                                        onEdit={() => handleEditWidget(widget)}
-                                        onCustomize={() => handleCustomizeWidget(widget)}
-                                    />
-                                </div>
-                                ))}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-min">
+  {currentWidgets.map((widget) => (
+    <div
+      key={widget.id}
+      className={
+        widget.width === 'full' 
+          ? 'col-span-1 md:col-span-2 lg:col-span-3' 
+          : widget.width === 'double'
+            ? 'col-span-1 md:col-span-2'
+            : 'col-span-1'
+      }
+    >
+      <WidgetFactory
+        widget={widget}
+        onEdit={() => handleEditWidget(widget)}
+        onCustomize={() => handleCustomizeWidget(widget)}
+      />
+    </div>
+  ))}
                                 {isEditMode && can.editDashboard && (
                                     <button
                                         onClick={() => {

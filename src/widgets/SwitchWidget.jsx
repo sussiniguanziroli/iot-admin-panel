@@ -11,12 +11,19 @@ import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 import { parsePayload } from '../shared/utils/payloadParser';
 
+const HEIGHT_MAP = {
+  sm: 'py-4',
+  md: 'py-6',
+  lg: 'py-8',
+  xl: 'py-10'
+};
+
 const SwitchWidget = ({ 
   id, title, topic, commandTopic, dataKey = 'relay1', 
   commandFormat = 'text', onCommand = 'ON', offCommand = 'OFF', 
   onPayloadJSON, offPayloadJSON, customConfig, onEdit, onCustomize,
   payloadParsingMode, jsonPath, jsParserFunction, fallbackValue,
-  machineId
+  machineId, height = 'md'
 }) => {
   const { can, isSuperAdmin, isAdmin } = usePermissions();
   const { log } = useAuditLog();
@@ -341,6 +348,7 @@ const SwitchWidget = ({
 
   const showAccessBadge = advancedSettings.accessControl?.enabled && !hasAccess;
   const showAdminOverride = advancedSettings.accessControl?.enabled && isAdminOverride;
+  const containerPaddingClass = HEIGHT_MAP[height] || HEIGHT_MAP.md;
 
   return (
     <BaseWidget 
@@ -351,7 +359,7 @@ const SwitchWidget = ({
       onEdit={onEdit} 
       onCustomize={onCustomize}
     >
-      <div className="flex flex-col items-center justify-center py-6">
+      <div className={`flex flex-col items-center justify-center ${containerPaddingClass}`}>
         
         {showAccessBadge && (
           <div className="mb-3 px-3 py-1.5 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center gap-1.5 border border-orange-200 dark:border-orange-900/30">

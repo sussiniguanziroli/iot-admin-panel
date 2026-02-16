@@ -14,9 +14,16 @@ const ICON_MAP = {
   activity: Activity
 };
 
+const HEIGHT_MAP = {
+  sm: 'h-20',
+  md: 'h-28',
+  lg: 'h-36',
+  xl: 'h-44'
+};
+
 const MetricWidget = ({ 
   id, title, topic, dataKey, unit = '', color = 'blue', iconKey = 'activity', 
-  customConfig, onEdit, onCustomize,
+  customConfig, onEdit, onCustomize, height = 'md',
   payloadParsingMode, jsonPath, jsParserFunction, fallbackValue
 }) => {
   const { getWidgetData, setWidgetData } = useDashboard();
@@ -124,6 +131,8 @@ const MetricWidget = ({
     return value;
   };
 
+  const containerHeightClass = HEIGHT_MAP[height] || HEIGHT_MAP.md;
+
   return (
     <BaseWidget 
       id={id} 
@@ -132,7 +141,7 @@ const MetricWidget = ({
       onEdit={onEdit} 
       onCustomize={onCustomize}
     >
-      <div className="flex items-center justify-between h-full py-2">
+      <div className={`flex items-center justify-between ${containerHeightClass} py-2`}>
         <div>
           <div className="text-4xl font-bold text-slate-700 dark:text-white tracking-tight">
              {advConfig?.dataTransformation?.prefix || ''}
