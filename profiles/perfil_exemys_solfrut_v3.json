@@ -1,0 +1,97 @@
+{
+    "version": "3.0",
+    "timestamp": "2026-02-17",
+    "project": "SolFrut - Grid Libre",
+    "description": "Perfil V3 con sistema de layout libre y resize",
+    
+    "mqtt_config": {
+      "host": "d117b2b403d34e1cbc27488bb7782e37.s1.eu.hivemq.cloud",
+      "port": 8884,
+      "protocol": "wss",
+      "username": "sussiniguanziroli",
+      "password": "SolFrut2025"
+    },
+  
+    "machines": [
+      { "id": "motor_4", "name": "Motor Bomba 4" },
+      { "id": "motor_5", "name": "Motor Bomba 5" }
+    ],
+  
+    "widgets": [
+      {
+        "id": "m4_switch",
+        "machineId": "motor_4",
+        "type": "switch",
+        "title": "Accionamiento M4",
+        "topic": "solfrut/motores/m4/telemetria",
+        "commandTopic": "solfrut/motores/m4/comandos",
+        "dataKey": "estado",
+        "commandFormat": "text",
+        "onCommand": "MARCHA",
+        "offCommand": "PARADA",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "w": 3,
+          "h": 2,
+          "minW": 2,
+          "minH": 2
+        }
+      },
+      {
+        "id": "m4_gauge",
+        "machineId": "motor_4",
+        "type": "gauge",
+        "title": "Amperaje M4",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "corriente",
+        "min": 0,
+        "max": 40,
+        "layout": {
+          "x": 3,
+          "y": 0,
+          "w": 3,
+          "h": 4,
+          "minW": 3,
+          "minH": 3
+        },
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 25, "color": "#10b981" },
+              { "min": 25.1, "max": 35, "color": "#f59e0b" },
+              { "min": 35.1, "max": 40, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "m4_chart",
+        "machineId": "motor_4",
+        "type": "chart",
+        "title": "Curva de Carga M4",
+        "topic": "solfrut/motores/m4/telemetria",
+        "dataKey": "corriente",
+        "color": "#3b82f6",
+        "layout": {
+          "x": 6,
+          "y": 0,
+          "w": 6,
+          "h": 4,
+          "minW": 4,
+          "minH": 3
+        },
+        "customConfig": {
+          "gradient": { 
+            "enabled": true, 
+            "color": "#3b82f6" 
+          },
+          "lineStyle": { 
+            "strokeWidth": 3 
+          }
+        }
+      }
+    ]
+  }
+  

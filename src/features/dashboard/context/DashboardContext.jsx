@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { doc, onSnapshot, setDoc, collection, getDocs, query } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -24,6 +24,8 @@ export const DashboardProvider = ({ children }) => {
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
+
+  const [chartData, setChartData] = useState({});
 
   const widgetDataStore = useRef({
     metric: {},
@@ -51,6 +53,32 @@ export const DashboardProvider = ({ children }) => {
       switch: {}
     };
   };
+
+  const getChartData = useCallback((widgetId) => {
+    return chartData[widgetId] || [];
+  }, [chartData]);
+
+  const clearChartData = useCallback((widgetId) => {
+    setChartData(prev => {
+      const updated = { ...prev };
+      delete updated[widgetId];
+      return updated;
+    });
+  }, []);
+
+  const addChartPoint = useCallback((widgetId, dataPoint) => {
+    setChartData(prev => {
+      const existing = prev[widgetId] || [];
+      const updated = [...existing, dataPoint];
+      
+      const MAX_POINTS = 1000;
+      if (updated.length > MAX_POINTS) {
+        return { ...prev, [widgetId]: updated.slice(-MAX_POINTS) };
+      }
+      
+      return { ...prev, [widgetId]: updated };
+    });
+  }, []);
 
   useEffect(() => {
     if (userProfile?.tenantId) {
@@ -234,7 +262,10 @@ export const DashboardProvider = ({ children }) => {
       loadProfile, loadingData,
       viewedTenantId, switchTenant,
       locations, activeLocation, switchLocation, updateWidget,
-      getWidgetData, setWidgetData
+      getWidgetData, setWidgetData,  chartData,
+      getChartData,
+      addChartPoint,
+      clearChartData
     }}>
       {children}
     </DashboardContext.Provider>
