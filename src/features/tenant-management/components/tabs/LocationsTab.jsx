@@ -8,7 +8,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
     MapPin, Plus, Trash2, Save, Wifi, Globe, Building2,
-    X, Check, AlertCircle, Lock, TrendingUp, Eye, Crosshair
+    X, Check, AlertCircle, Lock, TrendingUp, Eye, Crosshair, Database, Pause, Play
 } from 'lucide-react';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -62,7 +62,8 @@ const LocationsTab = ({ tenantId }) => {
         username: '',
         password: '',
         backend_port: 8883,
-        backend_protocol: 'mqtts'
+        backend_protocol: 'mqtts',
+        telemetry: true
     });
 
     useEffect(() => {
@@ -129,7 +130,8 @@ const LocationsTab = ({ tenantId }) => {
             username: loc.mqtt_config?.username || '',
             password: loc.mqtt_config?.password || '',
             backend_port: loc.mqtt_config?.backend_port || 8883,
-            backend_protocol: loc.mqtt_config?.backend_protocol || 'mqtts'
+            backend_protocol: loc.mqtt_config?.backend_protocol || 'mqtts',
+            telemetry: loc.telemetry !== undefined ? loc.telemetry : true
         });
         setMapCenter([loc.lat || -34.6037, loc.lng || -58.3816]);
         setMapZoom(15);
@@ -161,7 +163,8 @@ const LocationsTab = ({ tenantId }) => {
             username: '',
             password: '',
             backend_port: 8883,
-            backend_protocol: 'mqtts'
+            backend_protocol: 'mqtts',
+            telemetry: true
         });
         setMapCenter([-34.6037, -58.3816]);
         setMapZoom(13);
@@ -186,6 +189,7 @@ const LocationsTab = ({ tenantId }) => {
             address: locationForm.address,
             lat: locationForm.lat,
             lng: locationForm.lng,
+            telemetry: locationForm.telemetry,
             updatedAt: new Date().toISOString()
         };
 
@@ -289,6 +293,45 @@ const LocationsTab = ({ tenantId }) => {
         }
     };
 
+    const handleTelemetryToggle = async () => {
+        const newState = !locationForm.telemetry;
+        
+        const result = await Swal.fire({
+            icon: newState ? 'info' : 'warning',
+            title: newState ? 'Resume Telemetry?' : 'Pause Telemetry?',
+            html: `
+                <div class="text-left space-y-2">
+                    <p class="text-slate-600">
+                        ${newState 
+                            ? 'Data ingestion will resume for this location. All MQTT messages will be stored in BigQuery.'
+                            : '<strong>Data ingestion will be paused.</strong> MQTT messages will NOT be stored in BigQuery until you resume telemetry.'
+                        }
+                    </p>
+                    <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg mt-3 text-sm">
+                        <p><strong>Location:</strong> ${locationForm.name}</p>
+                        <p><strong>New State:</strong> ${newState ? '✅ Active' : '⏸️ Paused'}</p>
+                    </div>
+                    ${!newState ? '<p class="text-xs text-orange-600 mt-2">⚠️ Use this to avoid storing garbage data during equipment setup.</p>' : ''}
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonColor: newState ? '#10b981' : '#f59e0b',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: newState ? 'Yes, resume' : 'Yes, pause',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        });
+
+        if (result.isConfirmed) {
+            setLocationForm(prev => ({ ...prev, telemetry: newState }));
+            
+            toast.success(
+                newState ? '✅ Telemetry resumed' : '⏸️ Telemetry paused',
+                { position: 'bottom-right', autoClose: 2000 }
+            );
+        }
+    };
+
     const usagePercentage = getUsagePercentage();
     const isNearLimit = usagePercentage >= 80 && tenantLimits?.maxLocations !== 999;
 
@@ -370,7 +413,7 @@ const LocationsTab = ({ tenantId }) => {
                                         <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
                                             {loc.address || 'No address set'}
                                         </p>
-                                        <div className="flex items-center gap-1 mt-2">
+                                        <div className="flex items-center gap-1 mt-2 flex-wrap">
                                             {loc.mqtt_config?.host ? (
                                                 <span className="text-[10px] px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full font-bold flex items-center gap-1">
                                                     <Wifi size={10} /> Connected
@@ -378,6 +421,11 @@ const LocationsTab = ({ tenantId }) => {
                                             ) : (
                                                 <span className="text-[10px] px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-full font-bold flex items-center gap-1">
                                                     <AlertCircle size={10} /> No Broker
+                                                </span>
+                                            )}
+                                            {loc.telemetry === false && (
+                                                <span className="text-[10px] px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full font-bold flex items-center gap-1">
+                                                    <Pause size={10} /> Paused
                                                 </span>
                                             )}
                                         </div>
@@ -632,6 +680,53 @@ const LocationsTab = ({ tenantId }) => {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {can.configureMqtt && (
+                                        <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                                                        <Database size={20} className="text-amber-600" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                                                            Data Ingestion
+                                                        </p>
+                                                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                                                            {locationForm.telemetry 
+                                                                ? 'Messages are being stored in BigQuery'
+                                                                : 'Telemetry is paused - no data will be saved'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <button
+                                                    type="button"
+                                                    onClick={handleTelemetryToggle}
+                                                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all ${
+                                                        locationForm.telemetry 
+                                                            ? 'bg-emerald-500' 
+                                                            : 'bg-slate-300 dark:bg-slate-600'
+                                                    }`}
+                                                >
+                                                    <span
+                                                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform flex items-center justify-center shadow-lg ${
+                                                            locationForm.telemetry ? 'translate-x-7' : 'translate-x-1'
+                                                        }`}
+                                                    >
+                                                        {locationForm.telemetry ? (
+                                                            <Play size={12} className="text-emerald-600" />
+                                                        ) : (
+                                                            <Pause size={12} className="text-slate-600" />
+                                                        )}
+                                                    </span>
+                                                </button>
+                                            </div>
+                                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 ml-11">
+                                                💡 Pause telemetry during equipment setup to avoid storing garbage data
+                                            </p>
+                                        </div>
+                                    )}
 
                                     <div>
                                         <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2 block">
