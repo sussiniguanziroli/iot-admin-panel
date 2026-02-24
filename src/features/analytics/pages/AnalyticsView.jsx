@@ -1,237 +1,345 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Download, RefreshCw, TrendingUp, Zap, Clock, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import React, { useState, useEffect, useMemo } from 'react';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { db } from '../../../firebase/config';
+import { BarChart2, ChevronDown, Search, Building2 } from 'lucide-react';
+import { useAuth } from '../../auth/context/AuthContext';
+import { useAnalytics } from '../../../shared/hooks/useAnalytics';
+import GlobalView from '../components/GlobalView';
+import DrillDownView from '../components/DrillDownView';
 
-// Datos Simulados para Gráficos (Mocks)
-const MOCK_HOURLY_DATA = Array.from({ length: 24 }, (_, i) => ({
-  time: `${i}:00`,
-  consumo: Math.floor(Math.random() * (45 - 20) + 20), // 20-45 Amperes
-  voltaje: Math.floor(Math.random() * (225 - 215) + 215), // 215-225 Volts
-}));
+const TIME_RANGES = [
+    { value: '24h', label: 'Hoy' },
+    { value: '7d', label: '7 días' },
+    { value: '30d', label: '30 días' },
+    { value: 'custom', label: 'Custom' }
+];
+
+const EmptyState = ({ message }) => (
+    <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center mb-4">
+            <BarChart2 size={32} className="text-slate-400" />
+        </div>
+        <h3 className="font-bold text-slate-700 dark:text-slate-200 text-lg">Sin datos todavía</h3>
+        <p className="text-slate-400 text-sm mt-2 text-center max-w-sm">
+            {message || 'Seleccioná una planta, máquina y métrica, luego presioná Consultar.'}
+        </p>
+    </div>
+);
 
 const AnalyticsView = () => {
-  const [timeRange, setTimeRange] = useState('24h');
-  const [isLoading, setIsLoading] = useState(false);
+    const { userProfile } = useAuth();
+    const { timeSeries, summary, meta, loading, error, fetch } = useAnalytics();
 
-  // Simulación de carga de datos
-  const handleRefresh = () => {
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1000);
-  };
+    const isSuperAdmin = userProfile?.role === 'super_admin';
 
-  const StatCard = ({ title, value, unit, trend, trendValue, icon: Icon, color }) => (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-xl ${color}`}>
-          <Icon size={24} />
+    const [hasQueried, setHasQueried] = useState(false);
+
+    const [allTenants, setAllTenants] = useState([]);
+    const [selectedTenantId, setSelectedTenantId] = useState('');
+
+    const [locations, setLocations] = useState([]);
+    const [selectedLocation, setSelectedLocation] = useState('');
+
+    const [locationMachines, setLocationMachines] = useState([]);
+    const [locationWidgets, setLocationWidgets] = useState([]);
+
+    const [selectedMachine, setSelectedMachine] = useState('all');
+    const [selectedDataKey, setSelectedDataKey] = useState('');
+    const [timeRange, setTimeRange] = useState('24h');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+
+    const [loadingTenants, setLoadingTenants] = useState(false);
+    const [loadingLocations, setLoadingLocations] = useState(false);
+    const [loadingLocation, setLoadingLocation] = useState(false);
+
+    useEffect(() => {
+        if (isSuperAdmin) {
+            const fetchTenants = async () => {
+                setLoadingTenants(true);
+                try {
+                    const snap = await getDocs(collection(db, 'tenants'));
+                    const list = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+                    setAllTenants(list);
+                    if (list.length > 0) setSelectedTenantId(list[0].id);
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    setLoadingTenants(false);
+                }
+            };
+            fetchTenants();
+        } else {
+            if (userProfile?.tenantId) {
+                setSelectedTenantId(userProfile.tenantId);
+            }
+        }
+    }, [isSuperAdmin, userProfile]);
+
+    useEffect(() => {
+        if (!selectedTenantId) return;
+        const fetchLocations = async () => {
+            setLoadingLocations(true);
+            setSelectedLocation('');
+            setLocationMachines([]);
+            setLocationWidgets([]);
+            setSelectedMachine('all');
+            setSelectedDataKey('');
+            try {
+                const snap = await getDocs(collection(db, 'tenants', selectedTenantId, 'locations'));
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setLocations(list);
+                if (list.length > 0) setSelectedLocation(list[0].id);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoadingLocations(false);
+            }
+        };
+        fetchLocations();
+    }, [selectedTenantId]);
+
+    useEffect(() => {
+        if (!selectedLocation || !selectedTenantId) return;
+        const fetchLocationData = async () => {
+            setLoadingLocation(true);
+            setSelectedMachine('all');
+            setSelectedDataKey('');
+            try {
+                const snap = await getDoc(doc(db, 'tenants', selectedTenantId, 'locations', selectedLocation));
+                if (snap.exists()) {
+                    const layout = snap.data().layout || {};
+                    setLocationMachines(layout.machines || []);
+                    setLocationWidgets(layout.widgets || []);
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoadingLocation(false);
+            }
+        };
+        fetchLocationData();
+    }, [selectedLocation, selectedTenantId]);
+
+    useEffect(() => {
+        setSelectedDataKey('');
+    }, [selectedMachine]);
+
+    const availableDataKeys = useMemo(() => {
+        if (!locationWidgets.length) return [];
+        const relevantWidgets = selectedMachine === 'all'
+            ? locationWidgets
+            : locationWidgets.filter(w => w.machineId === selectedMachine);
+        const seen = new Set();
+        const keys = [];
+        relevantWidgets.forEach(w => {
+            if (w.dataKey && !seen.has(w.dataKey)) {
+                seen.add(w.dataKey);
+                keys.push({
+                    dataKey: w.dataKey,
+                    label: w.title || w.dataKey,
+                    unit: w.unit || '',
+                    type: w.type
+                });
+            }
+        });
+        return keys;
+    }, [locationWidgets, selectedMachine]);
+
+    const handleSearch = () => {
+        if (!selectedDataKey || !selectedTenantId) return;
+        setHasQueried(true);
+        fetch({
+            tenantId: selectedTenantId,
+            locationId: selectedLocation || null,
+            machineId: selectedMachine,
+            dataKey: selectedDataKey,
+            timeRange,
+            dateFrom: timeRange === 'custom' ? dateFrom : null,
+            dateTo: timeRange === 'custom' ? dateTo : null
+        });
+    };
+
+    const isSearchDisabled = !selectedDataKey || loading || loadingLocation || loadingLocations ||
+        (timeRange === 'custom' && (!dateFrom || !dateTo));
+    const isDrillDown = meta?.machineId && meta.machineId !== 'all';
+    const hasData = timeSeries.length > 0 || summary.length > 0;
+
+    const selectedTenantName = allTenants.find(t => t.id === selectedTenantId)?.name || '';
+
+    return (
+        <div className="max-w-7xl mx-auto space-y-6">
+
+            <div>
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Análisis Histórico</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Consultá tendencias y estadísticas desde BigQuery.</p>
+            </div>
+
+            {isSuperAdmin && (
+                <div className="bg-slate-800 text-white rounded-2xl p-4 flex items-center gap-4">
+                    <div className="p-2 bg-indigo-500 rounded-lg">
+                        <Building2 size={20} />
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-indigo-200 font-bold uppercase tracking-wider">Empresa:</span>
+                        <div className="relative">
+                            <select
+                                value={selectedTenantId}
+                                onChange={e => setSelectedTenantId(e.target.value)}
+                                disabled={loadingTenants}
+                                className="appearance-none bg-slate-900 border border-slate-600 text-white pl-3 pr-8 py-1.5 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                            >
+                                {allTenants.map(t => (
+                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={13} className="absolute right-2 top-2.5 pointer-events-none text-slate-400" />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+                <div className="flex flex-wrap gap-4 items-end">
+
+                    <div className="flex flex-col gap-1.5 min-w-[160px]">
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Planta</label>
+                        <div className="relative">
+                            <select
+                                value={selectedLocation}
+                                onChange={e => setSelectedLocation(e.target.value)}
+                                disabled={loadingLocations || locations.length === 0}
+                                className="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-white pl-3 pr-8 py-2.5 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                                {locations.length === 0 && <option value="">Sin plantas</option>}
+                                {locations.map(l => (
+                                    <option key={l.id} value={l.id}>{l.name}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={14} className="absolute right-2.5 top-3 pointer-events-none text-slate-400" />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 min-w-[160px]">
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Máquina</label>
+                        <div className="relative">
+                            <select
+                                value={selectedMachine}
+                                onChange={e => setSelectedMachine(e.target.value)}
+                                disabled={loadingLocation || locationMachines.length === 0}
+                                className="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-white pl-3 pr-8 py-2.5 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                                <option value="all">Todas</option>
+                                {locationMachines.map(m => (
+                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={14} className="absolute right-2.5 top-3 pointer-events-none text-slate-400" />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 min-w-[200px]">
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Métrica</label>
+                        <div className="relative">
+                            <select
+                                value={selectedDataKey}
+                                onChange={e => setSelectedDataKey(e.target.value)}
+                                disabled={availableDataKeys.length === 0 || loadingLocation}
+                                className="w-full appearance-none bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-white pl-3 pr-8 py-2.5 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                                <option value="">Seleccionar métrica</option>
+                                {availableDataKeys.map(k => (
+                                    <option key={k.dataKey} value={k.dataKey}>
+                                        {k.label}{k.unit ? ` (${k.unit})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown size={14} className="absolute right-2.5 top-3 pointer-events-none text-slate-400" />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Período</label>
+                        <div className="flex gap-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl p-1">
+                            {TIME_RANGES.map(r => (
+                                <button
+                                    key={r.value}
+                                    onClick={() => setTimeRange(r.value)}
+                                    className={`px-3 py-1.5 text-sm font-bold rounded-lg transition-all ${
+                                        timeRange === r.value
+                                            ? 'bg-slate-800 dark:bg-blue-600 text-white shadow'
+                                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
+                                    }`}
+                                >
+                                    {r.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {timeRange === 'custom' && (
+                        <div className="flex items-end gap-2">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Desde</label>
+                                <input
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={e => setDateFrom(e.target.value)}
+                                    className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-white px-3 py-2.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Hasta</label>
+                                <input
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={e => setDateTo(e.target.value)}
+                                    className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-white px-3 py-2.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleSearch}
+                        disabled={isSearchDisabled}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-700 disabled:text-slate-400 text-white font-bold rounded-xl transition-all shadow-sm disabled:cursor-not-allowed"
+                    >
+                        {loading
+                            ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            : <Search size={16} />
+                        }
+                        Consultar
+                    </button>
+                </div>
+            </div>
+
+            {error && (
+                <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 rounded-2xl px-5 py-4 text-sm font-medium">
+                    {error}
+                </div>
+            )}
+
+            {loading && (
+                <div className="flex items-center justify-center py-24">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Consultando BigQuery...</p>
+                    </div>
+                </div>
+            )}
+
+            {!loading && hasData && (
+                isDrillDown
+                    ? <DrillDownView timeSeries={timeSeries} summary={summary} meta={meta} machines={locationMachines} />
+                    : <GlobalView timeSeries={timeSeries} summary={summary} meta={meta} machines={locationMachines} />
+            )}
+
+            {!loading && !hasData && hasQueried && !error && <EmptyState />}
+            {!loading && !hasQueried && <EmptyState />}
+
         </div>
-        {trend && (
-          <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${trend === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-            {trend === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            {trendValue}
-          </div>
-        )}
-      </div>
-      <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
-      <div className="flex items-baseline gap-1">
-        <h3 className="text-3xl font-bold text-slate-800">{value}</h3>
-        <span className="text-slate-400 font-medium text-sm">{unit}</span>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Análisis Histórico</h1>
-          <p className="text-sm text-slate-500">Rendimiento energético y operativo de planta.</p>
-        </div>
-        
-        <div className="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-          {['24h', '7d', '30d'].map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(range)}
-              className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-all ${
-                timeRange === range 
-                  ? 'bg-slate-800 text-white shadow-md' 
-                  : 'text-slate-500 hover:bg-slate-100'
-              }`}
-            >
-              {range === '24h' ? 'Hoy' : range === '7d' ? 'Semana' : 'Mes'}
-            </button>
-          ))}
-          <div className="w-px h-6 bg-slate-200 mx-1"></div>
-          <button 
-            onClick={handleRefresh}
-            className={`p-2 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all ${isLoading ? 'animate-spin' : ''}`}
-          >
-            <RefreshCw size={18} />
-          </button>
-          <button className="p-2 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-all">
-            <Download size={18} />
-          </button>
-        </div>
-      </div>
-
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Consumo Total" 
-          value="4,250" 
-          unit="kWh" 
-          icon={Zap} 
-          color="bg-amber-100 text-amber-600"
-          trend="up"
-          trendValue="+12%"
-        />
-        <StatCard 
-          title="Eficiencia Operativa" 
-          value="94.2" 
-          unit="%" 
-          icon={TrendingUp} 
-          color="bg-emerald-100 text-emerald-600"
-          trend="up"
-          trendValue="+2.1%"
-        />
-        <StatCard 
-          title="Tiempo Activo" 
-          value="18h 40m" 
-          unit="" 
-          icon={Clock} 
-          color="bg-blue-100 text-blue-600"
-        />
-        <StatCard 
-          title="Alertas Críticas" 
-          value="2" 
-          unit="Eventos" 
-          icon={AlertTriangle} 
-          color="bg-rose-100 text-rose-600"
-          trend="down"
-          trendValue="-50%"
-        />
-      </div>
-
-      {/* GRÁFICO PRINCIPAL (BIG DATA PLACEHOLDER) */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Zap size={18} className="text-amber-500" />
-            Curva de Demanda Energética
-          </h3>
-          <div className="flex gap-4 text-xs font-bold">
-            <span className="flex items-center gap-1 text-slate-500"><div className="w-3 h-3 rounded-full bg-blue-500"></div> Consumo (A)</span>
-            <span className="flex items-center gap-1 text-slate-500"><div className="w-3 h-3 rounded-full bg-purple-400"></div> Voltaje (V)</span>
-          </div>
-        </div>
-        
-        <div className="h-[350px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={MOCK_HOURLY_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorConsumo" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis 
-                dataKey="time" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fill: '#94a3b8', fontSize: 12 }} 
-                dy={10}
-              />
-              <YAxis 
-                yAxisId="left" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fill: '#94a3b8', fontSize: 12 }} 
-              />
-              <YAxis 
-                yAxisId="right" 
-                orientation="right" 
-                domain={[200, 240]} 
-                axisLine={false} 
-                tickLine={false} 
-                hide
-              />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
-              />
-              <Area 
-                yAxisId="left"
-                type="monotone" 
-                dataKey="consumo" 
-                stroke="#3b82f6" 
-                strokeWidth={3} 
-                fillOpacity={1} 
-                fill="url(#colorConsumo)" 
-                name="Amperaje"
-                animationDuration={1500}
-              />
-              <Line 
-                yAxisId="right"
-                type="monotone" 
-                dataKey="voltaje" 
-                stroke="#a855f7" 
-                strokeWidth={2} 
-                dot={false}
-                strokeDasharray="5 5"
-                name="Voltaje"
-                animationDuration={2000}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* EVENT LOG TABLE */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-          <h3 className="font-bold text-slate-800">Registro de Eventos (Logs)</h3>
-          <button className="text-sm text-blue-600 font-bold hover:underline">Ver Todo</button>
-        </div>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
-            <tr>
-              <th className="px-6 py-4">Hora</th>
-              <th className="px-6 py-4">Dispositivo</th>
-              <th className="px-6 py-4">Evento</th>
-              <th className="px-6 py-4">Severidad</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {[1, 2, 3].map((_, i) => (
-              <tr key={i} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4 text-slate-500">14:3{i} PM</td>
-                <td className="px-6 py-4 font-medium text-slate-700">Motor {4 + i}</td>
-                <td className="px-6 py-4 text-slate-600">Arranque detectado (Corriente nominal)</td>
-                <td className="px-6 py-4">
-                  <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold">INFO</span>
-                </td>
-              </tr>
-            ))}
-             <tr className="bg-rose-50/50 hover:bg-rose-50">
-                <td className="px-6 py-4 text-rose-800 font-medium">10:15 AM</td>
-                <td className="px-6 py-4 font-bold text-rose-900">Reconectador 101</td>
-                <td className="px-6 py-4 text-rose-700">Falla de Fase detectada - Disparo Automático</td>
-                <td className="px-6 py-4">
-                  <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit">
-                    <AlertTriangle size={10} /> CRÍTICO
-                  </span>
-                </td>
-              </tr>
-          </tbody>
-        </table>
-      </div>
-
-    </div>
-  );
+    );
 };
 
 export default AnalyticsView;

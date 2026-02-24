@@ -1,0 +1,435 @@
+{
+    "version": "1.0",
+    "timestamp": "2026-02-24",
+    "project": "CocaCola - Planta Embotelladora",
+    "description": "Dashboard industrial para monitoreo de líneas de producción",
+    
+    "mqtt_config": {
+      "host": "d117b2b403d34e1cbc27488bb7782e37.s1.eu.hivemq.cloud",
+      "port": 8884,
+      "protocol": "wss",
+      "username": "sussiniguanziroli",
+      "password": "SolFrut2025",
+      "backend_port": 8883,
+      "backend_protocol": "mqtts"
+    },
+  
+    "machines": [
+      { "id": "linea1", "name": "Línea 1 - Embotellado" },
+      { "id": "linea2", "name": "Línea 2 - Transporte" },
+      { "id": "utilidades", "name": "Servicios Auxiliares" },
+      { "id": "electrico", "name": "Sistema Eléctrico" }
+    ],
+  
+    "widgets": [
+      {
+        "id": "emb_switch",
+        "machineId": "linea1",
+        "type": "switch",
+        "title": "Control Embotelladora",
+        "topic": "cocacola/linea1/embotelladora/telemetria",
+        "commandTopic": "cocacola/linea1/embotelladora/comandos",
+        "dataKey": "estado",
+        "commandFormat": "text",
+        "onCommand": "MARCHA",
+        "offCommand": "PARADA",
+        "width": "normal",
+        "height": "md"
+      },
+      {
+        "id": "emb_corriente",
+        "machineId": "linea1",
+        "type": "gauge",
+        "title": "Corriente Embotelladora",
+        "topic": "cocacola/linea1/embotelladora/telemetria",
+        "dataKey": "corriente",
+        "unit": "A",
+        "min": 0,
+        "max": 90,
+        "width": "normal",
+        "height": "md",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 60, "color": "#10b981" },
+              { "min": 60.1, "max": 75, "color": "#f59e0b" },
+              { "min": 75.1, "max": 90, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "emb_velocidad",
+        "machineId": "linea1",
+        "type": "metric",
+        "title": "Velocidad Línea 1",
+        "topic": "cocacola/linea1/embotelladora/telemetria",
+        "dataKey": "velocidad",
+        "unit": "%",
+        "color": "blue",
+        "iconKey": "activity",
+        "width": "normal",
+        "height": "md"
+      },
+      {
+        "id": "emb_temp",
+        "machineId": "linea1",
+        "type": "metric",
+        "title": "Temperatura Motor",
+        "topic": "cocacola/linea1/embotelladora/telemetria",
+        "dataKey": "temperatura",
+        "unit": "°C",
+        "color": "orange",
+        "iconKey": "thermometer",
+        "width": "normal",
+        "height": "md",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "<=", "value": 50, "color": "green" },
+              { "condition": ">", "value": 50, "color": "orange" },
+              { "condition": ">", "value": 65, "color": "red" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "emb_chart",
+        "machineId": "linea1",
+        "type": "chart",
+        "title": "Histórico Corriente Embotelladora",
+        "topic": "cocacola/linea1/embotelladora/telemetria",
+        "dataKey": "corriente",
+        "color": "#3b82f6",
+        "width": "full",
+        "height": "lg",
+        "customConfig": {
+          "gradient": { "enabled": true, "color": "#3b82f6" },
+          "lineStyle": { "strokeWidth": 2 }
+        }
+      },
+  
+      {
+        "id": "trans_switch",
+        "machineId": "linea2",
+        "type": "switch",
+        "title": "Control Transportadora",
+        "topic": "cocacola/linea2/transportadora/telemetria",
+        "commandTopic": "cocacola/linea2/transportadora/comandos",
+        "dataKey": "estado",
+        "commandFormat": "text",
+        "onCommand": "MARCHA",
+        "offCommand": "PARADA",
+        "width": "normal",
+        "height": "md"
+      },
+      {
+        "id": "trans_corriente",
+        "machineId": "linea2",
+        "type": "gauge",
+        "title": "Corriente Transportadora",
+        "topic": "cocacola/linea2/transportadora/telemetria",
+        "dataKey": "corriente",
+        "unit": "A",
+        "min": 0,
+        "max": 55,
+        "width": "normal",
+        "height": "md",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 35, "color": "#10b981" },
+              { "min": 35.1, "max": 45, "color": "#f59e0b" },
+              { "min": 45.1, "max": 55, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "trans_velocidad",
+        "machineId": "linea2",
+        "type": "metric",
+        "title": "Velocidad Cinta",
+        "topic": "cocacola/linea2/transportadora/telemetria",
+        "dataKey": "velocidad",
+        "unit": "%",
+        "color": "purple",
+        "iconKey": "activity",
+        "width": "normal",
+        "height": "md"
+      },
+  
+      {
+        "id": "comp_switch",
+        "machineId": "utilidades",
+        "type": "switch",
+        "title": "Control Compresor",
+        "topic": "cocacola/utilidades/compresor/telemetria",
+        "commandTopic": "cocacola/utilidades/compresor/comandos",
+        "dataKey": "estado",
+        "commandFormat": "text",
+        "onCommand": "MARCHA",
+        "offCommand": "PARADA",
+        "width": "normal",
+        "height": "md"
+      },
+      {
+        "id": "comp_presion",
+        "machineId": "utilidades",
+        "type": "gauge",
+        "title": "Presión Aire",
+        "topic": "cocacola/utilidades/compresor/telemetria",
+        "dataKey": "presion",
+        "unit": "bar",
+        "min": 0,
+        "max": 10,
+        "width": "normal",
+        "height": "md",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 6, "color": "#ef4444" },
+              { "min": 6.1, "max": 8.5, "color": "#10b981" },
+              { "min": 8.6, "max": 10, "color": "#f59e0b" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "comp_corriente",
+        "machineId": "utilidades",
+        "type": "metric",
+        "title": "Corriente Compresor",
+        "topic": "cocacola/utilidades/compresor/telemetria",
+        "dataKey": "corriente",
+        "unit": "A",
+        "color": "blue",
+        "iconKey": "zap",
+        "width": "normal",
+        "height": "md"
+      },
+  
+      {
+        "id": "enfr_switch",
+        "machineId": "utilidades",
+        "type": "switch",
+        "title": "Control Enfriador",
+        "topic": "cocacola/utilidades/enfriador/telemetria",
+        "commandTopic": "cocacola/utilidades/enfriador/comandos",
+        "dataKey": "estado",
+        "commandFormat": "text",
+        "onCommand": "MARCHA",
+        "offCommand": "PARADA",
+        "width": "normal",
+        "height": "md"
+      },
+      {
+        "id": "enfr_temp_salida",
+        "machineId": "utilidades",
+        "type": "gauge",
+        "title": "Temp. Salida Enfriador",
+        "topic": "cocacola/utilidades/enfriador/telemetria",
+        "dataKey": "temp_salida",
+        "unit": "°C",
+        "min": 0,
+        "max": 15,
+        "width": "normal",
+        "height": "md",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 5, "color": "#10b981" },
+              { "min": 5.1, "max": 8, "color": "#f59e0b" },
+              { "min": 8.1, "max": 15, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "enfr_temp_entrada",
+        "machineId": "utilidades",
+        "type": "metric",
+        "title": "Temp. Entrada",
+        "topic": "cocacola/utilidades/enfriador/telemetria",
+        "dataKey": "temp_entrada",
+        "unit": "°C",
+        "color": "orange",
+        "iconKey": "thermometer",
+        "width": "normal",
+        "height": "md"
+      },
+  
+      {
+        "id": "reco_estado",
+        "machineId": "electrico",
+        "type": "metric",
+        "title": "Estado Reconectador",
+        "topic": "cocacola/electrico/reco1/telemetria",
+        "dataKey": "estado",
+        "color": "green",
+        "iconKey": "zap",
+        "width": "normal",
+        "height": "md",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": "CLOSED", "color": "green" },
+              { "condition": "===", "value": "OPEN", "color": "red" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "reco_v_l1",
+        "machineId": "electrico",
+        "type": "metric",
+        "title": "Tensión L1",
+        "topic": "cocacola/electrico/reco1/telemetria",
+        "dataKey": "voltaje_L1",
+        "unit": "V",
+        "color": "blue",
+        "iconKey": "zap",
+        "width": "normal",
+        "height": "md"
+      },
+      {
+        "id": "reco_v_l2",
+        "machineId": "electrico",
+        "type": "metric",
+        "title": "Tensión L2",
+        "topic": "cocacola/electrico/reco1/telemetria",
+        "dataKey": "voltaje_L2",
+        "unit": "V",
+        "color": "blue",
+        "iconKey": "zap",
+        "width": "normal",
+        "height": "md"
+      },
+      {
+        "id": "reco_v_l3",
+        "machineId": "electrico",
+        "type": "metric",
+        "title": "Tensión L3",
+        "topic": "cocacola/electrico/reco1/telemetria",
+        "dataKey": "voltaje_L3",
+        "unit": "V",
+        "color": "blue",
+        "iconKey": "zap",
+        "width": "normal",
+        "height": "md"
+      },
+      {
+        "id": "reco_corriente_total",
+        "machineId": "electrico",
+        "type": "gauge",
+        "title": "Corriente Total",
+        "topic": "cocacola/electrico/reco1/telemetria",
+        "dataKey": "corriente_total",
+        "unit": "A",
+        "min": 0,
+        "max": 350,
+        "width": "double",
+        "height": "lg",
+        "customConfig": {
+          "colorZones": {
+            "enabled": true,
+            "zones": [
+              { "min": 0, "max": 250, "color": "#10b981" },
+              { "min": 250.1, "max": 300, "color": "#f59e0b" },
+              { "min": 300.1, "max": 350, "color": "#ef4444" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "reco_sobrecorriente",
+        "machineId": "electrico",
+        "type": "metric",
+        "title": "Protección Sobrecorriente",
+        "topic": "cocacola/electrico/reco1/telemetria",
+        "dataKey": "sobrecorriente",
+        "color": "gray",
+        "iconKey": "activity",
+        "width": "normal",
+        "height": "sm",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": false, "color": "green" },
+              { "condition": "===", "value": true, "color": "red" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "reco_sobretension",
+        "machineId": "electrico",
+        "type": "metric",
+        "title": "Protección Sobretensión",
+        "topic": "cocacola/electrico/reco1/telemetria",
+        "dataKey": "sobretension",
+        "color": "gray",
+        "iconKey": "activity",
+        "width": "normal",
+        "height": "sm",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": false, "color": "green" },
+              { "condition": "===", "value": true, "color": "red" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "reco_bajatension",
+        "machineId": "electrico",
+        "type": "metric",
+        "title": "Protección Bajatensión",
+        "topic": "cocacola/electrico/reco1/telemetria",
+        "dataKey": "bajatension",
+        "color": "gray",
+        "iconKey": "activity",
+        "width": "normal",
+        "height": "sm",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": false, "color": "green" },
+              { "condition": "===", "value": true, "color": "red" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "reco_desequilibrio",
+        "machineId": "electrico",
+        "type": "metric",
+        "title": "Protección Desequilibrio",
+        "topic": "cocacola/electrico/reco1/telemetria",
+        "dataKey": "desequilibrio",
+        "color": "gray",
+        "iconKey": "activity",
+        "width": "normal",
+        "height": "sm",
+        "customConfig": {
+          "conditionalFormatting": {
+            "enabled": true,
+            "rules": [
+              { "condition": "===", "value": false, "color": "green" },
+              { "condition": "===", "value": true, "color": "red" }
+            ]
+          }
+        }
+      }
+    ]
+  }
