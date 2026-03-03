@@ -6,3 +6,4 @@ exports.calculateTenantUsage = require('./src/helpers/calculateTenantUsage').cal
 exports.onTenantPlanUpdate = require('./src/triggers/onTenantPlanUpdate').onTenantPlanUpdate;
 exports.upgradePlan = require('./src/callable/upgradePlan').upgradePlan;
 exports.queryTelemetry = require('./src/callable/queryTelemetry').queryTelemetry;
+exports.getChartHistory = require('./src/callable/getChartHistory').getChartHistory;
