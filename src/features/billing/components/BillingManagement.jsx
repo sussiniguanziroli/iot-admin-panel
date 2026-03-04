@@ -1,12 +1,10 @@
-// src/features/billing/components/BillingManagement.jsx
-
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { usePlans } from '../../../shared/hooks/usePlans';
 import { 
   CreditCard, Package, TrendingUp, AlertCircle, CheckCircle, 
-  Activity, Users, MapPin, Layout, Zap, Database, Calendar, Lock
+  Activity, Users, MapPin, Layout, Zap, Database, Calendar, Lock, AlertTriangle, Plus, X
 } from 'lucide-react';
 
 const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
@@ -14,6 +12,7 @@ const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
   const [billingData, setBillingData] = useState(null);
   const [realUsage, setRealUsage] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   useEffect(() => {
     const fetchBillingData = async () => {
@@ -47,7 +46,7 @@ const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
           });
         }
       } catch (error) {
-        console.error('Error fetching billing data:', error);
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -80,8 +79,11 @@ const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
   const { subscription, limits, usage } = billingData;
   const planData = getPlanById(subscription.plan);
   const planName = planData?.displayName || subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1);
+  const isTrial = subscription.status === 'trialing';
   const isActive = subscription.status === 'active';
+  const isPastDue = subscription.status === 'past_due';
   const daysUntilRenewal = Math.ceil((new Date(subscription.currentPeriodEnd) - new Date()) / (1000 * 60 * 60 * 24));
+  const hasPaymentMethod = !!subscription.paymentMethod;
 
   const usageMetrics = [
     {
@@ -128,6 +130,56 @@ const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
   return (
     <div className="space-y-6">
       
+      {isTrial && !isSuperAdmin && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-600 rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-amber-100 dark:bg-amber-800/50 rounded-full text-amber-600 dark:text-amber-400">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-amber-900 dark:text-amber-100">
+                Trial Period Active
+              </h3>
+              <p className="text-amber-700 dark:text-amber-300">
+                You have {daysUntilRenewal} days remaining on your trial. Add a payment method to avoid service interruption.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setIsCheckoutOpen(true)}
+            className="whitespace-nowrap bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold transition-colors shadow-lg shadow-amber-500/30"
+          >
+            Add Payment Method
+          </button>
+        </div>
+      )}
+
+      {isPastDue && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-400 dark:border-red-600 rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-red-100 dark:bg-red-800/50 rounded-full text-red-600 dark:text-red-400">
+              <AlertCircle size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-red-900 dark:text-red-100">
+                Payment Failed
+              </h3>
+              <p className="text-red-700 dark:text-red-300">
+                Your last payment could not be processed. Please update your payment method to restore full access.
+              </p>
+            </div>
+          </div>
+          {!isSuperAdmin && (
+            <button 
+              onClick={() => setIsCheckoutOpen(true)}
+              className="whitespace-nowrap bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold transition-colors shadow-lg shadow-red-500/30"
+            >
+              Update Payment Method
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-6">
@@ -137,15 +189,19 @@ const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
               </div>
               <div>
                 <h2 className="text-2xl font-bold">{planName} Plan</h2>
-                <p className="text-purple-200">Active Subscription</p>
+                <p className="text-purple-200">
+                  {isTrial ? 'Trial Subscription' : 'Active Subscription'}
+                </p>
               </div>
             </div>
             <div className={`px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 ${
               isActive 
                 ? 'bg-emerald-500/20 text-emerald-100 border border-emerald-400/30' 
+                : isTrial
+                ? 'bg-amber-500/20 text-amber-100 border border-amber-400/30'
                 : 'bg-red-500/20 text-red-100 border border-red-400/30'
             }`}>
-              {isActive ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+              {isActive ? <CheckCircle size={16} /> : isTrial ? <AlertTriangle size={16} /> : <AlertCircle size={16} />}
               {subscription.status.toUpperCase()}
             </div>
           </div>
@@ -167,7 +223,7 @@ const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
             <div>
               <p className="text-purple-200 text-sm mb-1">Time Remaining</p>
               <p className="font-mono text-lg font-bold">
-                {daysUntilRenewal} days
+                {daysUntilRenewal > 0 ? `${daysUntilRenewal} days` : 'Expired'}
               </p>
             </div>
           </div>
@@ -308,22 +364,74 @@ const BillingManagement = ({ tenantId, isSuperAdmin = false }) => {
 
       {!isSuperAdmin && (
         <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
               <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-2">
                 Payment Method
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Configure your billing details and payment information
+                {hasPaymentMethod 
+                  ? 'Your active payment method for automated billing' 
+                  : 'Add a payment method to activate your subscription'}
               </p>
             </div>
-            <button 
-              disabled
-              className="flex items-center gap-2 bg-slate-300 text-slate-500 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
-            >
-              <CreditCard size={20} />
-              Coming Soon
-            </button>
+            
+            {hasPaymentMethod ? (
+              <div className="flex items-center gap-4 bg-white dark:bg-slate-800 px-6 py-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm w-full md:w-auto">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg">
+                  <CreditCard className="text-blue-600 dark:text-blue-400" size={24} />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-800 dark:text-white capitalize">
+                    {subscription.paymentMethod.brand} ending in {subscription.paymentMethod.last4}
+                  </p>
+                  <button 
+                    onClick={() => setIsCheckoutOpen(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                  >
+                    Update card
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsCheckoutOpen(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all w-full md:w-auto justify-center"
+              >
+                <Plus size={20} />
+                Add Payment Method
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isCheckoutOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="font-bold text-lg text-slate-800 dark:text-white">Secure Checkout</h3>
+              <button onClick={() => setIsCheckoutOpen(false)} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 text-center flex flex-col items-center">
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4 text-blue-600 dark:text-blue-400">
+                <CreditCard size={32} />
+              </div>
+              <h4 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
+                Mercado Pago Integration
+              </h4>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                This space is reserved for the Mercado Pago Card Payment Brick. The integration will securely collect the card details and tokenize them without hitting your Firestore directly.
+              </p>
+              <button 
+                onClick={() => setIsCheckoutOpen(false)}
+                className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-6 py-3 rounded-xl font-bold transition-colors"
+              >
+                Close Placeholder
+              </button>
+            </div>
           </div>
         </div>
       )}

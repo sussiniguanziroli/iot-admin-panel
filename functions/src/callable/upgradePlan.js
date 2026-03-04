@@ -1,5 +1,3 @@
-// functions/src/callable/upgradePlan.js
-
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { calculateTenantUsage } = require("../helpers/calculateTenantUsage");
@@ -8,25 +6,20 @@ const db = getFirestore();
 
 exports.upgradePlan = onCall(
   {
-    region: "us-central1", // 👈 Región explícita
-    invoker: "public",      // 👈 Permite acceso público
-    cors: true              // 👈 Manejo de cabeceras
+    region: "us-central1",
+    invoker: "public",
+    cors: true
   },
   async (request) => {
-    console.log("🚀 upgradePlan called");
-
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "User must be authenticated");
     }
 
-    const { tenantId, planId } = request.data;
+    const { tenantId, planId, bypassPayment } = request.data;
     const uid = request.auth.uid;
 
     if (!tenantId || !planId) {
-      throw new HttpsError(
-        "invalid-argument",
-        "tenantId and planId are required"
-      );
+      throw new HttpsError("invalid-argument", "tenantId and planId are required");
     }
 
     try {
@@ -37,14 +30,14 @@ exports.upgradePlan = onCall(
 
       const userData = userDoc.data();
       const isSuperAdmin = userData.role === "super_admin";
-      const isTenantAdmin =
-        userData.role === "admin" && userData.tenantId === tenantId;
+      const isTenantAdmin = userData.role === "admin" && userData.tenantId === tenantId;
 
       if (!isSuperAdmin && !isTenantAdmin) {
-        throw new HttpsError(
-          "permission-denied",
-          "User does not have permission to upgrade this tenant"
-        );
+        throw new HttpsError("permission-denied", "User does not have permission");
+      }
+
+      if (bypassPayment && !isSuperAdmin) {
+        throw new HttpsError("permission-denied", "Only Super Admins can bypass payment");
       }
 
       const planDoc = await db.collection("plans").doc(planId).get();
@@ -60,21 +53,31 @@ exports.upgradePlan = onCall(
 
       const tenantData = tenantDoc.data();
       const oldPlan = tenantData.plan || "unknown";
+      const sub = tenantData.subscription || {};
+
+      if (!bypassPayment) {
+        if (!sub.gatewaySubscriptionId || sub.gateway !== 'mercadopago') {
+          throw new HttpsError("failed-precondition", "No active Mercado Pago subscription found");
+        }
+
+        console.log(`MP API Call: Update sub ${sub.gatewaySubscriptionId} to amount ${planData.price}`);
+      }
+
       const usage = await calculateTenantUsage(tenantId);
       const now = new Date().toISOString();
+      
+      const nextBilling = sub.nextBillingDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
       await db.collection("tenants").doc(tenantId).update({
         plan: planId,
         limits: planData.limits,
         usage: usage,
         subscription: {
+          ...sub,
           plan: planId,
           status: "active",
-          currentPeriodStart: now,
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          lastPaymentDate: now,
-          paymentMethod: tenantData.subscription?.paymentMethod || null,
+          nextBillingDate: nextBilling,
+          lastPaymentDate: bypassPayment ? now : sub.lastPaymentDate,
         },
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -83,7 +86,11 @@ exports.upgradePlan = onCall(
         action: "PLAN_UPGRADED",
         tenantId: tenantId,
         userId: uid,
-        changes: { from: oldPlan, to: planId },
+        changes: { 
+          from: oldPlan, 
+          to: planId,
+          bypassedPayment: bypassPayment === true 
+        },
         timestamp: FieldValue.serverTimestamp(),
       });
 
@@ -94,8 +101,7 @@ exports.upgradePlan = onCall(
         message: `Plan upgraded from ${oldPlan} to ${planId}`,
       };
     } catch (error) {
-      console.error("❌ Error upgrading plan:", error);
-      // Mantenemos la estructura de error original de tu catch
+      console.error(error);
       throw new HttpsError("internal", error.message);
     }
   }

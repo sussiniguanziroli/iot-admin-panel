@@ -1,29 +1,43 @@
-// src/features/billing/components/PlanUpgradeWizard.jsx
-
-import React, { useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { usePlans } from '../../../shared/hooks/usePlans';
+import { usePermissions } from '../../../../shared/hooks/usePermissions';
 import Swal from 'sweetalert2';
 import {
     X, ArrowRight, ArrowLeft, CheckCircle, Crown, Zap,
-    TrendingUp, Users, MapPin, Layout, Database, CreditCard, Sparkles
+    TrendingUp, Users, MapPin, Layout, Database, CreditCard, Sparkles, ShieldAlert
 } from 'lucide-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }) => {
     const { plans, getPlanById, loading: plansLoading } = usePlans();
+    const { isSuperAdmin } = usePermissions();
     
     const [currentStep, setCurrentStep] = useState(1);
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [subscriptionData, setSubscriptionData] = useState(null);
+    const [loadingSub, setLoadingSub] = useState(true);
+    const [bypassPayment, setBypassPayment] = useState(false);
 
-    const [paymentData, setPaymentData] = useState({
-        cardNumber: '',
-        cardHolder: '',
-        expiryDate: '',
-        cvv: ''
-    });
+    useEffect(() => {
+        const fetchSubscription = async () => {
+            if (!isOpen) return;
+            setLoadingSub(true);
+            try {
+                const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+                if (tenantDoc.exists()) {
+                    setSubscriptionData(tenantDoc.data().subscription);
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoadingSub(false);
+            }
+        };
+        fetchSubscription();
+    }, [isOpen, tenantId]);
 
     const handleSelectPlan = (planId) => {
         setSelectedPlan(planId);
@@ -33,16 +47,14 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
         setIsProcessing(true);
       
         try {
-          // 👈 IMPORTANTE: Especificar la región 'us-central1' aquí
           const functions = getFunctions(undefined, 'us-central1'); 
           const upgradePlanFn = httpsCallable(functions, 'upgradePlan');
           
           const result = await upgradePlanFn({
             tenantId,
-            planId: selectedPlan
+            planId: selectedPlan,
+            bypassPayment: isSuperAdmin ? bypassPayment : false
           });
-      
-          console.log('✅ Upgrade result:', result.data);
       
           setCurrentStep(4);
           if (onSuccess) onSuccess();
@@ -55,7 +67,6 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
             showConfirmButton: false
           });
         } catch (error) {
-          console.error('❌ Upgrade error:', error);
           Swal.fire({
             icon: 'error',
             title: 'Upgrade Failed',
@@ -70,24 +81,19 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
     const handleClose = () => {
         setCurrentStep(1);
         setSelectedPlan(null);
-        setPaymentData({
-            cardNumber: '',
-            cardHolder: '',
-            expiryDate: '',
-            cvv: ''
-        });
+        setBypassPayment(false);
         onClose();
     };
 
     if (!isOpen) return null;
 
-    if (plansLoading) {
+    if (plansLoading || loadingSub) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl p-8">
                     <div className="flex flex-col items-center gap-4">
                         <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                        <p className="text-slate-600 dark:text-slate-400">Loading plans...</p>
+                        <p className="text-slate-600 dark:text-slate-400">Loading...</p>
                     </div>
                 </div>
             </div>
@@ -96,11 +102,12 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
 
     const currentPlanData = getPlanById(currentPlan);
     const selectedPlanData = selectedPlan ? getPlanById(selectedPlan) : null;
+    const hasPaymentMethod = !!subscriptionData?.paymentMethod;
 
     const steps = [
         { num: 1, title: 'Select Plan' },
         { num: 2, title: 'Review' },
-        { num: 3, title: 'Payment' },
+        { num: 3, title: 'Confirm' },
         { num: 4, title: 'Complete' }
     ];
 
@@ -363,122 +370,86 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
                                     })}
                                 </div>
                             </div>
-
-                            <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                                <div className="flex items-start gap-3">
-                                    <Zap size={20} className="text-amber-600 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
-                                            Immediate Upgrade
-                                        </p>
-                                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                                            Your new limits will take effect immediately after payment confirmation.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     )}
 
                     {currentStep === 3 && (
-                        <div className="space-y-6 animate-in fade-in max-w-md mx-auto">
-                            <div className="text-center mb-6">
-                                <CreditCard size={48} className="mx-auto text-purple-600 mb-3" />
-                                <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
-                                    Payment Information
-                                </h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    Secure payment processing (Demo Mode)
-                                </p>
-                            </div>
-
-                            <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-6 text-white mb-6 shadow-xl">
-                                <div className="flex justify-between items-start mb-8">
-                                    <div className="w-12 h-8 bg-white/20 rounded backdrop-blur-sm"></div>
-                                    <div className="text-xs font-bold">DEMO CARD</div>
-                                </div>
-                                <div className="font-mono text-xl tracking-wider mb-4">
-                                    {paymentData.cardNumber || '•••• •••• •••• ••••'}
-                                </div>
-                                <div className="flex justify-between items-end">
-                                    <div>
-                                        <div className="text-xs opacity-70 mb-1">Card Holder</div>
-                                        <div className="font-bold">{paymentData.cardHolder || 'YOUR NAME'}</div>
+                        <div className="space-y-6 animate-in fade-in max-w-md mx-auto mt-8">
+                            
+                            {isSuperAdmin && (
+                                <div className="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-400 dark:border-emerald-600 rounded-xl p-6 mb-6">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <ShieldAlert size={24} className="text-emerald-600 dark:text-emerald-400" />
+                                        <h3 className="font-bold text-emerald-900 dark:text-emerald-100">Super Admin Override</h3>
                                     </div>
-                                    <div>
-                                        <div className="text-xs opacity-70 mb-1">Expires</div>
-                                        <div className="font-bold">{paymentData.expiryDate || 'MM/YY'}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2 block">
-                                        Card Number
-                                    </label>
-                                    <input
-                                        type="text"
-                                        maxLength="19"
-                                        className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono dark:bg-slate-800 dark:text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 outline-none transition-all"
-                                        value={paymentData.cardNumber}
-                                        onChange={e => setPaymentData({ ...paymentData, cardNumber: e.target.value })}
-                                        placeholder="1234 5678 9012 3456"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2 block">
-                                        Card Holder Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl dark:bg-slate-800 dark:text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 outline-none transition-all"
-                                        value={paymentData.cardHolder}
-                                        onChange={e => setPaymentData({ ...paymentData, cardHolder: e.target.value })}
-                                        placeholder="John Doe"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2 block">
-                                            Expiry Date
-                                        </label>
-                                        <input
-                                            type="text"
-                                            maxLength="5"
-                                            className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono dark:bg-slate-800 dark:text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 outline-none transition-all"
-                                            value={paymentData.expiryDate}
-                                            onChange={e => setPaymentData({ ...paymentData, expiryDate: e.target.value })}
-                                            placeholder="MM/YY"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2 block">
-                                            CVV
-                                        </label>
-                                        <input
-                                            type="text"
-                                            maxLength="3"
-                                            className="w-full px-4 py-3 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono dark:bg-slate-800 dark:text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900 outline-none transition-all"
-                                            value={paymentData.cvv}
-                                            onChange={e => setPaymentData({ ...paymentData, cvv: e.target.value })}
-                                            placeholder="123"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                                    <p className="text-sm text-amber-800 dark:text-amber-200 font-bold flex items-center gap-2">
-                                        <CheckCircle size={16} />
-                                        Demo Mode Active
+                                    <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-4">
+                                        As a Super Admin, you can bypass the payment gateway and force the plan upgrade immediately.
                                     </p>
-                                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                                        No actual payment will be processed. This is for demonstration purposes only.
-                                    </p>
+                                    <label className="flex items-center gap-3 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={bypassPayment}
+                                            onChange={(e) => setBypassPayment(e.target.checked)}
+                                            className="w-5 h-5 rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500"
+                                        />
+                                        <span className="font-bold text-emerald-900 dark:text-emerald-100">
+                                            Bypass Mercado Pago charge
+                                        </span>
+                                    </label>
                                 </div>
-                            </div>
+                            )}
+
+                            {!isSuperAdmin && !hasPaymentMethod && (
+                                <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center">
+                                    <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 dark:text-blue-400">
+                                        <CreditCard size={32} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Payment Required</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 mb-6">
+                                        You need to add a payment method to your account before upgrading your plan.
+                                    </p>
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg text-sm text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                        <span className="block font-bold mb-1">Mercado Pago Brick Placeholder</span>
+                                        In production, the user will enter their card details here to tokenize the payment method before proceeding.
+                                    </div>
+                                </div>
+                            )}
+
+                            {(!isSuperAdmin && hasPaymentMethod) || (isSuperAdmin && !bypassPayment) ? (
+                                <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-6">
+                                    <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-4">Payment Summary</h3>
+                                    
+                                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm">
+                                                <CreditCard size={20} className="text-slate-600 dark:text-slate-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-800 dark:text-white capitalize">
+                                                    {subscriptionData?.paymentMethod?.brand || 'Card'} ending in {subscriptionData?.paymentMethod?.last4 || '****'}
+                                                </p>
+                                                <p className="text-xs text-slate-500">Active payment method</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                            <span>New Plan Cost</span>
+                                            <span>${selectedPlanData?.price}/mo</span>
+                                        </div>
+                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                            <span>Prorated Difference</span>
+                                            <span>Calculated at checkout</span>
+                                        </div>
+                                        <div className="border-t border-slate-200 dark:border-slate-700 pt-2 mt-2 flex justify-between font-bold text-slate-800 dark:text-white">
+                                            <span>Charge to card today</span>
+                                            <span>Pending</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+
                         </div>
                     )}
 
@@ -502,12 +473,6 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm text-slate-600 dark:text-slate-400">Monthly Cost</span>
                                     <span className="font-bold text-slate-800 dark:text-white">${selectedPlanData?.price}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Next Billing</span>
-                                    <span className="font-bold text-slate-800 dark:text-white">
-                                        {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                                    </span>
                                 </div>
                             </div>
 
@@ -545,7 +510,7 @@ const PlanUpgradeWizard = ({ isOpen, onClose, tenantId, currentPlan, onSuccess }
                         {currentStep === 3 && (
                             <button
                                 onClick={handleUpgrade}
-                                disabled={isProcessing}
+                                disabled={isProcessing || (!isSuperAdmin && !hasPaymentMethod)}
                                 className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isProcessing ? (
