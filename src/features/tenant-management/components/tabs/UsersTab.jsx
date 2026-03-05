@@ -3,11 +3,12 @@ import { collection, query, where, getDocs, deleteDoc, doc, getDoc } from 'fireb
 import { db } from '../../../../firebase/config';
 import { createInvitation } from '../../../../services/AdminService';
 import { useAuth } from '../../../auth/context/AuthContext';
-import { 
-  UserPlus, Mail, Trash2, Crown, User, Shield, 
+import {
+  UserPlus, Mail, Trash2, Crown, User, Shield,
   Copy, Check, Link as LinkIcon, XCircle, AlertCircle,
   Users as UsersIcon, Search, Filter, Lock, TrendingUp
 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 const UsersTab = ({ tenantId, tenantName }) => {
   const { user } = useAuth();
@@ -17,7 +18,7 @@ const UsersTab = ({ tenantId, tenantName }) => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [tenantLimits, setTenantLimits] = useState(null);
   const [tenantUsage, setTenantUsage] = useState(null);
-  
+
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'operator' });
   const [inviteLink, setInviteLink] = useState('');
@@ -73,9 +74,14 @@ const UsersTab = ({ tenantId, tenantName }) => {
 
   const handleGenerateInvite = async (e) => {
     e.preventDefault();
-    
+
     if (!canAddUser()) {
-      alert(`⚠️ User Limit Reached\n\nYour current plan allows ${tenantLimits.maxUsers} user(s).\nUpgrade your plan to invite more team members.`);
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Límite de usuarios alcanzado',
+        text: `Tu plan actual permite ${tenantLimits.maxUsers} usuario(s). Actualizá tu plan para invitar más miembros.`,
+        confirmButtonText: 'Entendido'
+      });
       return;
     }
 
@@ -84,18 +90,40 @@ const UsersTab = ({ tenantId, tenantName }) => {
       setInviteLink(link);
     } catch (e) {
       console.error(e);
-      alert('Error generating invite');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo generar el link de invitación.',
+        confirmButtonText: 'Cerrar'
+      });
     }
   };
 
   const handleRemoveUser = async (userId) => {
-    if (!window.confirm('Revoke access for this user?')) return;
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: '¿Revocar acceso?',
+      text: 'El usuario perderá el acceso inmediatamente. Esta acción no se puede deshacer.',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonText: 'Cancelar',
+      confirmButtonText: 'Sí, revocar acceso'
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       await deleteDoc(doc(db, 'users', userId));
       setUsers(users.filter(u => u.id !== userId));
       await fetchTenantData();
     } catch (e) {
       console.error(e);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo revocar el acceso.',
+        confirmButtonText: 'Cerrar'
+      });
     }
   };
 
@@ -112,17 +140,22 @@ const UsersTab = ({ tenantId, tenantName }) => {
     setHasCopied(false);
   };
 
-  const handleOpenInviteModal = () => {
+  const handleOpenInviteModal = async () => {
     if (!canAddUser()) {
-      alert(`⚠️ User Limit Reached\n\nYour current plan allows ${tenantLimits.maxUsers} user(s).\nUpgrade your plan to invite more team members.`);
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Límite de usuarios alcanzado',
+        text: `Tu plan actual permite ${tenantLimits.maxUsers} usuario(s). Actualizá tu plan para invitar más miembros.`,
+        confirmButtonText: 'Entendido'
+      });
       return;
     }
     setIsInviteModalOpen(true);
   };
 
   const filteredUsers = users.filter(u => {
-    const matchesSearch = u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          u.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -162,24 +195,20 @@ const UsersTab = ({ tenantId, tenantName }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in">
-      
+
       {tenantLimits && tenantUsage && (
         <div className={`rounded-xl border-2 p-4 ${
-          isNearLimit 
-            ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' 
+          isNearLimit
+            ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
             : 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${
-                isNearLimit ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-purple-100 dark:bg-purple-900/30'
-              }`}>
+              <div className={`p-2 rounded-lg ${isNearLimit ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-purple-100 dark:bg-purple-900/30'}`}>
                 <TrendingUp size={20} className={isNearLimit ? 'text-orange-600' : 'text-purple-600'} />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-800 dark:text-white">
-                  User Seats
-                </p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white">User Seats</p>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
                   {tenantUsage.users} of {tenantLimits.maxUsers === 999 ? '∞' : tenantLimits.maxUsers} seats used
                 </p>
@@ -187,9 +216,7 @@ const UsersTab = ({ tenantId, tenantName }) => {
             </div>
             {tenantLimits.maxUsers !== 999 && (
               <div className="text-right">
-                <p className={`text-2xl font-bold ${
-                  isNearLimit ? 'text-orange-600 dark:text-orange-400' : 'text-purple-600 dark:text-purple-400'
-                }`}>
+                <p className={`text-2xl font-bold ${isNearLimit ? 'text-orange-600 dark:text-orange-400' : 'text-purple-600 dark:text-purple-400'}`}>
                   {getRemainingUsers()}
                 </p>
                 <p className="text-xs text-slate-500">remaining</p>
@@ -199,10 +226,10 @@ const UsersTab = ({ tenantId, tenantName }) => {
           {tenantLimits.maxUsers !== 999 && (
             <div className="mt-3">
               <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                <div 
+                <div
                   className={`h-full transition-all duration-500 ${
-                    usagePercentage >= 90 ? 'bg-red-500' : 
-                    usagePercentage >= 80 ? 'bg-orange-500' : 
+                    usagePercentage >= 90 ? 'bg-red-500' :
+                    usagePercentage >= 80 ? 'bg-orange-500' :
                     'bg-purple-500'
                   }`}
                   style={{ width: `${Math.min(usagePercentage, 100)}%` }}
@@ -220,12 +247,8 @@ const UsersTab = ({ tenantId, tenantName }) => {
               <UsersIcon size={28} className="text-blue-600" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-blue-900 dark:text-blue-100">
-                Staff Management
-              </h3>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                Manage access for {tenantName} employees
-              </p>
+              <h3 className="text-xl font-bold text-blue-900 dark:text-blue-100">Staff Management</h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300">Manage access for {tenantName} employees</p>
             </div>
           </div>
           <button
@@ -244,7 +267,7 @@ const UsersTab = ({ tenantId, tenantName }) => {
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-        
+
         <div className="px-6 py-4 border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -277,43 +300,30 @@ const UsersTab = ({ tenantId, tenantName }) => {
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-900/50 border-b-2 border-slate-200 dark:border-slate-700">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">User</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {filteredUsers.map(u => (
-                  <tr 
-                    key={u.id} 
-                    className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group"
-                  >
+                  <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold shadow-md">
                           {u.name?.charAt(0).toUpperCase() || u.email?.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-800 dark:text-white">
-                            {u.name || 'Unnamed User'}
-                          </p>
+                          <p className="font-bold text-slate-800 dark:text-white">{u.name || 'Unnamed User'}</p>
                           <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                            <Mail size={12} />
-                            {u.email}
+                            <Mail size={12} />{u.email}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border-2 capitalize ${getRoleBadgeStyles(u.role)}`}>
-                        {getRoleIcon(u.role)}
-                        {u.role}
+                        {getRoleIcon(u.role)}{u.role}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -348,7 +358,7 @@ const UsersTab = ({ tenantId, tenantName }) => {
       {isInviteModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95">
-            
+
             {!inviteLink ? (
               <>
                 <div className="px-6 py-5 border-b-2 border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-900">
@@ -358,18 +368,11 @@ const UsersTab = ({ tenantId, tenantName }) => {
                         <UserPlus size={24} className="text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">
-                          Invite User
-                        </h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Generate a secure registration link
-                        </p>
+                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">Invite User</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Generate a secure registration link</p>
                       </div>
                     </div>
-                    <button
-                      onClick={resetInviteModal}
-                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                    >
+                    <button onClick={resetInviteModal} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors">
                       <XCircle size={20} className="text-slate-500" />
                     </button>
                   </div>
@@ -389,7 +392,7 @@ const UsersTab = ({ tenantId, tenantName }) => {
                       <option value="admin">Tenant Admin (Full Control)</option>
                     </select>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                      {inviteForm.role === 'operator' 
+                      {inviteForm.role === 'operator'
                         ? 'Can view dashboards and monitor data'
                         : 'Can manage locations, users, and billing'}
                     </p>
@@ -438,12 +441,8 @@ const UsersTab = ({ tenantId, tenantName }) => {
                   <div className="mx-auto w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mb-4 shadow-lg">
                     <Check size={32} className="text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">
-                    Invitation Ready!
-                  </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Share this link to grant access to {tenantName}
-                  </p>
+                  <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Invitation Ready!</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Share this link to grant access to {tenantName}</p>
                 </div>
 
                 <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-2 border-slate-200 dark:border-slate-700 mb-6">

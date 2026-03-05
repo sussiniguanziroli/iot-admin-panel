@@ -32,7 +32,6 @@ export const AuthProvider = ({ children }) => {
         try {
           const userDocRef = doc(db, "users", currentUser.uid);
           const userDoc = await getDoc(userDocRef);
-
           if (userDoc.exists()) {
             const data = userDoc.data();
             setUserProfile(data);
@@ -40,10 +39,12 @@ export const AuthProvider = ({ children }) => {
           } else {
             console.warn("Auth OK, but Profile missing in Firestore.");
             setUser(currentUser);
-            setUserProfile(null); 
+            setUserProfile(null);
           }
         } catch (error) {
           console.error("Profile Fetch Error:", error);
+          setUser(currentUser);
+          setUserProfile(null);
         }
       } else {
         setUser(null);
@@ -58,9 +59,9 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
   const logout = () => signOut(auth);
   const resetPassword = (email) => sendPasswordResetEmail(auth, email);
-  
+
   const registerSuperAdmin = (email, password) => {
-      return createUserWithEmailAndPassword(auth, email, password);
+    return createUserWithEmailAndPassword(auth, email, password);
   };
 
   const sendEmailVerification = async () => {
@@ -95,7 +96,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children} 
+      {children}
     </AuthContext.Provider>
   );
 };

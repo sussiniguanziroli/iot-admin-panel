@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { usePlans } from '../../../shared/hooks/usePlans';
-import { usePermissions } from '../../../../shared/hooks/usePermissions';
+import { usePermissions } from '../../../shared/hooks/usePermissions';
 import Swal from 'sweetalert2';
 import {
     X, ArrowRight, ArrowLeft, CheckCircle, Crown, Zap,

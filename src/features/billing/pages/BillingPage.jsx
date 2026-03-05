@@ -1,19 +1,21 @@
-// src/features/billing/pages/BillingPage.jsx
-
 import React from 'react';
 import { useAuth } from '../../auth/context/AuthContext';
 import BillingManagement from '../components/BillingManagement';
 import { ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const BillingPage = () => {
   const { userProfile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const collectionStatus = searchParams.get('collection_status');
+  const comingFromPayment = !!collectionStatus;
 
   return (
     <div className="max-w-7xl mx-auto pb-20">
       <div className="flex items-center gap-4 mb-6">
-        <button 
+        <button
           onClick={() => navigate('/app/home')}
           className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
         >
@@ -29,9 +31,11 @@ const BillingPage = () => {
         </div>
       </div>
 
-      <BillingManagement 
-        tenantId={userProfile?.tenantId} 
-        isSuperAdmin={false} 
+      <BillingManagement
+        tenantId={userProfile?.tenantId}
+        isSuperAdmin={false}
+        comingFromPayment={comingFromPayment}
+        paymentStatus={collectionStatus}
       />
     </div>
   );

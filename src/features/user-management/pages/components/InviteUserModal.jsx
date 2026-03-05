@@ -6,11 +6,12 @@ import { createInvitation } from '../../../../services/AdminService';
 import { sendInvitationEmail } from '../../../../services/EmailService';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../../../firebase/config';
+import Swal from 'sweetalert2';
 
 const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
   const { userProfile } = useAuth();
   const { isSuperAdmin } = usePermissions();
-  
+
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     email: '',
@@ -23,7 +24,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
   const [sendEmailAutomatically, setSendEmailAutomatically] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  
+
   const [tenants, setTenants] = useState([]);
   const [loadingTenants, setLoadingTenants] = useState(false);
 
@@ -48,10 +49,8 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
         name: doc.data().name,
         status: doc.data().status
       }));
-      
       const activeTenants = tenantsList.filter(t => t.status === 'active');
       setTenants(activeTenants);
-      
       if (activeTenants.length > 0 && !formData.tenantId) {
         setFormData(prev => ({ ...prev, tenantId: activeTenants[0].id }));
       }
@@ -83,7 +82,12 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
       }
     } catch (error) {
       console.error('Error generating invite:', error);
-      alert('Failed to generate invitation link');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error al generar invitación',
+        text: 'No se pudo generar el link de invitación. Intentá de nuevo.',
+        confirmButtonText: 'Cerrar'
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -91,7 +95,12 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
 
   const handleSendEmail = async (linkToSend = inviteLink) => {
     if (!formData.email) {
-      alert('Por favor ingresá un email para enviar la invitación');
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Email requerido',
+        text: 'Ingresá un email para enviar la invitación.',
+        confirmButtonText: 'Entendido'
+      });
       return;
     }
 
@@ -110,13 +119,24 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
 
       if (result.success) {
         setEmailSent(true);
-        alert('✅ Invitación enviada por email exitosamente');
+        await Swal.fire({
+          icon: 'success',
+          title: '¡Email enviado!',
+          text: 'La invitación fue enviada exitosamente.',
+          timer: 2000,
+          showConfirmButton: false
+        });
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
       console.error('Error sending email:', error);
-      alert('❌ Error al enviar el email. Podés copiar el link manualmente.');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error al enviar email',
+        text: 'No se pudo enviar el email. Podés copiar el link manualmente.',
+        confirmButtonText: 'Entendido'
+      });
     } finally {
       setIsSendingEmail(false);
     }
@@ -151,7 +171,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        
+
         {step === 1 ? (
           <>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-6 text-white">
@@ -165,23 +185,20 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
                     <p className="text-blue-100 mt-1">Crear un enlace de registro seguro</p>
                   </div>
                 </div>
-                <button 
-                  onClick={handleClose}
-                  className="text-white/80 hover:text-white transition-colors"
-                >
+                <button onClick={handleClose} className="text-white/80 hover:text-white transition-colors">
                   <X size={24} />
                 </button>
               </div>
             </div>
 
             <form onSubmit={handleGenerate} className="p-6 space-y-5">
-              
+
               {isSuperAdmin && (
                 <div>
                   <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                     Seleccionar Organización
                   </label>
-                  
+
                   {loadingTenants ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="animate-spin text-blue-600" size={24} />
@@ -199,25 +216,21 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                       <select
                         value={formData.tenantId}
-                        onChange={(e) => setFormData({...formData, tenantId: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, tenantId: e.target.value })}
                         required
                         className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white appearance-none cursor-pointer"
                       >
                         {tenants.map(tenant => (
-                          <option key={tenant.id} value={tenant.id}>
-                            {tenant.name}
-                          </option>
+                          <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
                         ))}
                       </select>
                     </div>
                   )}
-                  
+
                   {tenants.length > 0 && (
                     <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <Building2 size={12} />
-                      <span>
-                        Seleccionado: <span className="font-mono font-semibold">{formData.tenantId}</span>
-                      </span>
+                      <span>Seleccionado: <span className="font-mono font-semibold">{formData.tenantId}</span></span>
                     </div>
                   )}
                 </div>
@@ -230,16 +243,14 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
                   </label>
                   <div className="flex items-center gap-2">
                     <Building2 size={18} className="text-slate-400" />
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      {userProfile?.tenantId}
-                    </span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{userProfile?.tenantId}</span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                     Solo podés invitar usuarios a tu organización
                   </p>
                 </div>
               )}
-              
+
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                   Email (Recomendado)
@@ -250,7 +261,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
                     type="email"
                     placeholder="usuario@empresa.com"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
                   />
                 </div>
@@ -268,7 +279,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                   <select
                     value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                     className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white appearance-none cursor-pointer"
                   >
                     <option value="viewer">Viewer - Solo lectura</option>
@@ -347,23 +358,20 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
                     <p className="text-emerald-100 mt-1">Compartí este link para dar acceso</p>
                   </div>
                 </div>
-                <button 
-                  onClick={handleClose}
-                  className="text-white/80 hover:text-white transition-colors"
-                >
+                <button onClick={handleClose} className="text-white/80 hover:text-white transition-colors">
                   <X size={24} />
                 </button>
               </div>
             </div>
 
             <div className="p-6 space-y-5">
-              
+
               <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Detalles de Invitación</span>
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                    formData.role === 'admin' 
-                      ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300' 
+                    formData.role === 'admin'
+                      ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300'
                       : 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300'
                   }`}>
                     {formData.role.toUpperCase()}
@@ -381,9 +389,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
                       <Mail size={14} />
                       <span className="font-mono text-xs">{formData.email}</span>
                       {emailSent && (
-                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                          ✓ Enviado
-                        </span>
+                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">✓ Enviado</span>
                       )}
                     </div>
                   )}
