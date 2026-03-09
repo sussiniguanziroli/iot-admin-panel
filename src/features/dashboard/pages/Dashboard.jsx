@@ -3,363 +3,305 @@ import { useNavigate } from 'react-router-dom';
 import { useDashboard } from '../context/DashboardContext';
 import { useAuth } from '../../auth/context/AuthContext';
 import { usePermissions } from '../../../shared/hooks/usePermissions';
+import { useMqtt } from '../../mqtt/context/MqttContext';
+import useIsDark from '../../../shared/hooks/useIsDark';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 
-import GaugeWidget from '../../../widgets/GaugeWidget';
-import SwitchWidget from '../../../widgets/SwitchWidget';
-import MetricWidget from '../../../widgets/MetricWidget';
-import ChartWidget from '../../../widgets/ChartWidget';
-
-import WidgetConfigModal from '../../dashboard/components/WidgetConfigModal';
-import AddMachineModal from '../../dashboard/components/AddMachineModal';
-import WidgetCustomizerRouter from '../customizers/WidgetCustomizerRouter';
+import SchematicView from '../scheme/SchematicView';
 import MqttAuditor from '../../mqtt-auditor/MqttAuditor';
 
 import {
-    PlusCircle, Plus, X, Building, ChevronDown, Loader2,
-    MapPin, AlertCircle, Lock, Activity, Settings
+  Building, ChevronDown, Loader2, MapPin, AlertCircle,
+  Lock, Activity, Settings, Wifi, WifiOff, Signal
 } from 'lucide-react';
-import { DndContext, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
-
-const WidgetFactory = ({ widget, onEdit, onCustomize }) => {
-    const commonProps = { ...widget, onEdit, onCustomize };
-
-    switch (widget.type) {
-        case 'gauge': return <GaugeWidget {...commonProps} />;
-        case 'switch': return <SwitchWidget {...commonProps} />;
-        case 'metric': return <MetricWidget {...commonProps} />;
-        case 'chart': return <ChartWidget {...commonProps} />;
-        default: return null;
-    }
-};
 
 const Dashboard = () => {
-    const navigate = useNavigate();
-    const {
-        widgets, isEditMode, addWidget, updateWidget,
-        machines, activeMachineId, setActiveMachineId, addMachine, removeMachine,
-        reorderWidgets, viewedTenantId, switchTenant, loadingData,
-        locations, activeLocation, switchLocation
-    } = useDashboard();
+  const navigate = useNavigate();
+  const {
+    isEditMode,
+    viewedTenantId, switchTenant,
+    locations, activeLocation, switchLocation,
+    loadingData,
+  } = useDashboard();
 
-    const { userProfile } = useAuth();
-    const { can, isSuperAdmin } = usePermissions();
+  const { userProfile } = useAuth();
+  const { can, isSuperAdmin } = usePermissions();
+  const { connectionStatus, activeConfig } = useMqtt();
+  const isDark = useIsDark();
 
-    const [isWidgetModalOpen, setIsWidgetModalOpen] = useState(false);
-    const [isMachineModalOpen, setIsMachineModalOpen] = useState(false);
-    const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
-    const [isMqttAuditorOpen, setIsMqttAuditorOpen] = useState(false);
-    const [editingWidget, setEditingWidget] = useState(null);
-    const [customizingWidget, setCustomizingWidget] = useState(null);
-    const [availableTenants, setAvailableTenants] = useState([]);
+  const [availableTenants, setAvailableTenants]   = useState([]);
+  const [isMqttAuditorOpen, setIsMqttAuditorOpen] = useState(false);
 
-    const sensors = useSensors(
-        useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
-        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
-    );
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    getDocs(collection(db, 'tenants'))
+      .then(snap => setAvailableTenants(snap.docs.map(d => ({ id: d.id, name: d.data().name }))))
+      .catch(e => console.error('Error fetching tenants:', e));
+  }, [isSuperAdmin]);
 
-    useEffect(() => {
-        if (isSuperAdmin) {
-            const fetchList = async () => {
-                try {
-                    const snap = await getDocs(collection(db, 'tenants'));
-                    const list = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
-                    setAvailableTenants(list);
-                } catch (e) {
-                    console.error("Error fetching tenants list:", e);
-                }
-            };
-            fetchList();
-        }
-    }, [isSuperAdmin]);
+  const t = isDark ? {
+    bg:          '#020617',
+    barBg:       '#0f172a',
+    barBorder:   '#1e293b',
+    inputBg:     '#1e293b',
+    inputBorder: '#334155',
+    textPrimary: '#f1f5f9',
+    textMuted:   '#64748b',
+    textSub:     '#475569',
+    pillBg:      '#1e293b',
+    pillBorder:  '#334155',
+    emptyIcon:   '#1e293b',
+    emptyIconFg: '#334155',
+  } : {
+    bg:          '#f1f5f9',
+    barBg:       '#ffffff',
+    barBorder:   '#e2e8f0',
+    inputBg:     '#f8fafc',
+    inputBorder: '#cbd5e1',
+    textPrimary: '#0f172a',
+    textMuted:   '#64748b',
+    textSub:     '#94a3b8',
+    pillBg:      '#f1f5f9',
+    pillBorder:  '#e2e8f0',
+    emptyIcon:   '#e2e8f0',
+    emptyIconFg: '#cbd5e1',
+  };
 
-    const currentWidgets = widgets.filter(w => w.machineId === activeMachineId);
+  const mqttMap = {
+    connected:    { color: '#10b981', label: 'Conectado',   icon: Wifi    },
+    connecting:   { color: '#f59e0b', label: 'Conectando…', icon: Signal  },
+    disconnected: { color: '#64748b', label: 'Desconectado',icon: WifiOff },
+    error:        { color: '#ef4444', label: 'Error',       icon: WifiOff },
+  };
+  const mqttSt   = mqttMap[connectionStatus] || mqttMap.disconnected;
+  const MqttIcon = mqttSt.icon;
 
-    const handleDragEnd = (event) => {
-        if (!can.editDashboard) return;
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      width: '100%', height: '100%',
+      backgroundColor: t.bg,
+      overflow: 'hidden',
+      transition: 'background-color 0.2s',
+    }}>
 
-        const { active, over } = event;
-        if (active.id !== over.id) {
-            const oldIndex = widgets.findIndex((w) => w.id === active.id);
-            const newIndex = widgets.findIndex((w) => w.id === over.id);
-            reorderWidgets(oldIndex, newIndex);
-        }
-    };
-
-    const handleEditWidget = (widget) => {
-        setEditingWidget(widget);
-        setIsWidgetModalOpen(true);
-    };
-
-    const handleCustomizeWidget = (widget) => {
-        setCustomizingWidget(widget);
-        setIsCustomizerOpen(true);
-    };
-
-    const handleSaveWidget = (widgetData) => {
-        if (editingWidget) {
-            updateWidget(widgetData);
-        } else {
-            addWidget(widgetData);
-        }
-    };
-
-    const handleSaveCustomizer = (widgetData) => {
-        updateWidget(widgetData);
-    };
-
-    const handleCloseModal = () => {
-        setIsWidgetModalOpen(false);
-        setEditingWidget(null);
-    };
-
-    const handleCloseCustomizer = () => {
-        setIsCustomizerOpen(false);
-        setCustomizingWidget(null);
-    };
-
-    const handleGoToTenantConfig = () => {
-        if (viewedTenantId) {
-            navigate(`/app/tenants/${viewedTenantId}`);
-        }
-    };
-
-    return (
-        <div className="max-w-7xl mx-auto pb-20">
-
-            {isSuperAdmin && (
-                <div className="mb-4 bg-slate-800 text-white p-4 rounded-xl shadow-lg">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-500 rounded-lg">
-                                <Building size={20} />
-                            </div>
-                            <div>
-                                <p className="text-xs text-indigo-200 font-bold uppercase tracking-wider">Super Admin Mode</p>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm opacity-70">Viewing:</span>
-                                    <div className="relative group">
-                                        <select
-                                            value={viewedTenantId || ''}
-                                            onChange={(e) => switchTenant(e.target.value)}
-                                            className="appearance-none bg-slate-900 border border-slate-600 text-white pl-3 pr-8 py-1 rounded cursor-pointer hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold"
-                                        >
-                                            <option value="" disabled>Select Tenant</option>
-                                            {availableTenants.map(t => (
-                                                <option key={t.id} value={t.id}>{t.name}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown size={14} className="absolute right-2 top-2 pointer-events-none text-slate-400" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="flex flex-wrap items-center gap-3">
-                            <button
-                                onClick={handleGoToTenantConfig}
-                                disabled={!viewedTenantId}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-colors shadow-lg ${
-                                    viewedTenantId
-                                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                                        : 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                                }`}
-                            >
-                                <Settings size={18} />
-                                <span className="hidden sm:inline">Configure</span>
-                            </button>
-                            
-                            <button
-                                onClick={() => setIsMqttAuditorOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-bold transition-colors shadow-lg"
-                            >
-                                <Activity size={18} />
-                                <span className="hidden sm:inline">MQTT Auditor</span>
-                            </button>
-                            
-                            {loadingData && (
-                                <div className="flex items-center gap-2 text-xs text-indigo-300 animate-pulse">
-                                    <Loader2 size={14} className="animate-spin" /> 
-                                    <span className="hidden md:inline">Syncing...</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+      {/* ── SUPER ADMIN BANNER ───────────────────────── */}
+      {isSuperAdmin && (
+        <div style={{
+          backgroundColor: t.barBg,
+          borderBottom: `1px solid ${t.barBorder}`,
+          padding: '10px 20px',
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16, flexShrink: 0, flexWrap: 'wrap',
+          transition: 'background-color 0.2s, border-color 0.2s',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ padding: 6, backgroundColor: '#4f46e5', borderRadius: 8, display: 'flex' }}>
+              <Building size={16} style={{ color: '#fff' }} />
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 9, color: '#818cf8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                Super Admin
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                <span style={{ fontSize: 11, color: t.textMuted }}>Tenant:</span>
+                <div style={{ position: 'relative' }}>
+                  <select
+                    value={viewedTenantId || ''}
+                    onChange={(e) => switchTenant(e.target.value)}
+                    style={{
+                      appearance: 'none', backgroundColor: t.inputBg,
+                      border: `1px solid ${t.inputBorder}`, color: t.textPrimary,
+                      paddingLeft: 10, paddingRight: 28, paddingTop: 4, paddingBottom: 4,
+                      borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', outline: 'none',
+                    }}
+                  >
+                    <option value="" disabled>Seleccionar…</option>
+                    {availableTenants.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: t.textMuted, pointerEvents: 'none' }} />
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => viewedTenantId && navigate(`/app/tenants/${viewedTenantId}`)}
+              disabled={!viewedTenantId}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                border: 'none', cursor: viewedTenantId ? 'pointer' : 'not-allowed',
+                backgroundColor: viewedTenantId ? '#4f46e5' : t.inputBg,
+                color: viewedTenantId ? '#fff' : t.textMuted,
+                transition: 'background-color 0.15s',
+              }}
+            >
+              <Settings size={14} />
+              Configurar
+            </button>
+
+            <button
+              onClick={() => setIsMqttAuditorOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                border: 'none', cursor: 'pointer',
+                backgroundColor: '#0e7490', color: '#fff',
+              }}
+            >
+              <Activity size={14} />
+              MQTT Auditor
+            </button>
+
+            {loadingData && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', backgroundColor: t.inputBg, borderRadius: 8, outline: `1px solid ${t.pillBorder}` }}>
+                <Loader2 size={12} style={{ color: '#818cf8', animation: 'spin 1s linear infinite' }} />
+                <span style={{ fontSize: 11, color: '#818cf8', fontWeight: 600 }}>Sincronizando…</span>
+              </div>
             )}
-
-            {locations.length > 0 && (
-                <div className="mb-6 flex items-center gap-4 bg-white dark:bg-slate-800 p-2 pl-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                        <MapPin size={18} />
-                        <span className="text-sm font-bold uppercase tracking-wide">Location:</span>
-                    </div>
-
-                    <div className="relative group">
-                        <select
-                            value={activeLocation?.id || ''}
-                            onChange={(e) => switchLocation(e.target.value)}
-                            disabled={!can.viewLocations}
-                            className={`appearance-none bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-white pl-4 pr-10 py-2 rounded-lg font-bold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all ${!can.viewLocations ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            {locations.map(loc => (
-                                <option key={loc.id} value={loc.id}>{loc.name}</option>
-                            ))}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-3 top-3 pointer-events-none text-slate-500" />
-                    </div>
-
-                    <div className="ml-auto px-4 border-l border-slate-100 dark:border-slate-700 hidden sm:block">
-                        {activeLocation?.mqtt_config?.host ? (
-                            <span className="text-xs font-mono text-slate-400">
-                                Broker: {activeLocation.mqtt_config.host}
-                            </span>
-                        ) : (
-                            <span className="text-xs font-bold text-orange-500 flex items-center gap-1">
-                                <AlertCircle size={12} /> No Broker Configured
-                            </span>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {machines.length > 0 ? (
-                <>
-                    <div className="mb-8 border-b border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                            {machines.map(machine => (
-                                <div
-                                    key={machine.id}
-                                    onClick={() => setActiveMachineId(machine.id)}
-                                    className={`group relative flex items-center gap-2 px-6 py-3 rounded-t-xl cursor-pointer transition-all border-b-2 ${activeMachineId === machine.id
-                                        ? 'bg-white dark:bg-slate-800 border-blue-500 text-blue-600 dark:text-blue-400 font-bold shadow-sm'
-                                        : 'bg-transparent border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                        }`}
-                                >
-                                    <span>{machine.name}</span>
-                                    {isEditMode && can.editDashboard && machines.length > 1 && (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); removeMachine(machine.id); }}
-                                            className="p-1 rounded-full bg-red-100 text-red-500 hover:bg-red-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
-                                        >
-                                            <X size={12} />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            {isEditMode && can.editDashboard && (
-                                <button
-                                    onClick={() => setIsMachineModalOpen(true)}
-                                    className="p-2 rounded-lg text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 transition-colors"
-                                >
-                                    <Plus size={20} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
-                            {machines.find(m => m.id === activeMachineId)?.name}
-                        </h1>
-                    </div>
-
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <SortableContext items={currentWidgets.map(w => w.id)} strategy={rectSortingStrategy}>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-min">
-  {currentWidgets.map((widget) => (
-    <div
-      key={widget.id}
-      className={
-        widget.width === 'full' 
-          ? 'col-span-1 md:col-span-2 lg:col-span-3' 
-          : widget.width === 'double'
-            ? 'col-span-1 md:col-span-2'
-            : 'col-span-1'
-      }
-    >
-      <WidgetFactory
-        widget={widget}
-        onEdit={() => handleEditWidget(widget)}
-        onCustomize={() => handleCustomizeWidget(widget)}
-      />
-    </div>
-  ))}
-                                {isEditMode && can.editDashboard && (
-                                    <button
-                                        onClick={() => {
-                                            setEditingWidget(null);
-                                            setIsWidgetModalOpen(true);
-                                        }}
-                                        className="col-span-1 border-3 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl p-6 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all min-h-[250px] group animate-in fade-in"
-                                    >
-                                        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-100 dark:group-hover:bg-blue-900 flex items-center justify-center mb-4 transition-colors">
-                                            <PlusCircle size={32} className="group-hover:scale-110 transition-transform duration-300" />
-                                        </div>
-                                        <span className="font-bold text-lg">Add Widget</span>
-                                    </button>
-                                )}
-                            </div>
-                        </SortableContext>
-                    </DndContext>
-                </>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-20 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                    <div className="bg-slate-200 dark:bg-slate-700 p-4 rounded-full mb-4">
-                        <MapPin size={48} className="text-slate-400 dark:text-slate-500" />
-                    </div>
-                    <h2 className="text-xl font-bold text-slate-600 dark:text-slate-300">No Dashboards Yet</h2>
-                    <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-md text-center">
-                        {locations.length === 0
-                            ? "This tenant has no locations yet. Ask your Administrator to add a Site."
-                            : "Start building your dashboard by adding your first widget."}
-                    </p>
-                    {!can.editDashboard && locations.length > 0 && (
-                        <div className="mt-4 flex items-center gap-2 text-sm text-orange-500">
-                            <Lock size={16} />
-                            <span>Contact your administrator to configure this location</span>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {can.editDashboard && (
-                <>
-                    <WidgetConfigModal
-                        isOpen={isWidgetModalOpen}
-                        onClose={handleCloseModal}
-                        onSave={handleSaveWidget}
-                        widget={editingWidget}
-                        machineId={activeMachineId}
-                    />
-                    <AddMachineModal
-                        isOpen={isMachineModalOpen}
-                        onClose={() => setIsMachineModalOpen(false)}
-                        onSave={addMachine}
-                    />
-                    <WidgetCustomizerRouter
-                        isOpen={isCustomizerOpen}
-                        onClose={handleCloseCustomizer}
-                        onSave={handleSaveCustomizer}
-                        widget={customizingWidget}
-                    />
-                </>
-            )}
-
-            {isSuperAdmin && (
-                <MqttAuditor
-                    isOpen={isMqttAuditorOpen}
-                    onClose={() => setIsMqttAuditorOpen(false)}
-                />
-            )}
+          </div>
         </div>
-    );
+      )}
+
+      {/* ── LOCATION + MQTT STATUS BAR ───────────────── */}
+      {locations.length > 0 && (
+        <div style={{
+          backgroundColor: t.barBg,
+          borderBottom: `1px solid ${t.barBorder}`,
+          padding: '8px 20px',
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16, flexShrink: 0, flexWrap: 'wrap',
+          transition: 'background-color 0.2s, border-color 0.2s',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <MapPin size={14} style={{ color: t.textSub, flexShrink: 0 }} />
+            <span style={{ fontSize: 10, color: t.textSub, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Ubicación
+            </span>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={activeLocation?.id || ''}
+                onChange={(e) => switchLocation(e.target.value)}
+                disabled={!can.viewLocations}
+                style={{
+                  appearance: 'none', backgroundColor: t.inputBg,
+                  border: `1px solid ${t.inputBorder}`, color: t.textPrimary,
+                  paddingLeft: 12, paddingRight: 32, paddingTop: 6, paddingBottom: 6,
+                  borderRadius: 10, fontSize: 13, fontWeight: 700,
+                  cursor: can.viewLocations ? 'pointer' : 'not-allowed',
+                  outline: 'none', opacity: can.viewLocations ? 1 : 0.5,
+                  transition: 'background-color 0.2s, border-color 0.2s, color 0.2s',
+                }}
+              >
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: t.textMuted, pointerEvents: 'none' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '5px 12px', borderRadius: 20,
+              backgroundColor: t.pillBg,
+              border: `1px solid ${mqttSt.color}33`,
+              transition: 'background-color 0.2s',
+            }}>
+              <div style={{
+                width: 7, height: 7, borderRadius: '50%',
+                backgroundColor: mqttSt.color,
+                boxShadow: connectionStatus === 'connected' ? `0 0 6px ${mqttSt.color}` : 'none',
+                animation: connectionStatus === 'connecting' ? 'mqttPulse 1.5s infinite' : 'none',
+              }} />
+              <MqttIcon size={12} style={{ color: mqttSt.color }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: mqttSt.color }}>
+                {mqttSt.label}
+              </span>
+              {connectionStatus === 'connected' && activeConfig?.host && (
+                <span style={{ fontSize: 10, color: t.textMuted, fontFamily: 'monospace', marginLeft: 4 }}>
+                  {activeConfig.host}
+                </span>
+              )}
+            </div>
+
+            {!activeLocation?.mqtt_config?.host && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <AlertCircle size={13} style={{ color: '#f59e0b' }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b' }}>Sin broker</span>
+              </div>
+            )}
+
+            {!can.editDashboard && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', backgroundColor: t.pillBg, borderRadius: 8, border: `1px solid ${t.pillBorder}` }}>
+                <Lock size={11} style={{ color: t.textMuted }} />
+                <span style={{ fontSize: 11, color: t.textMuted, fontWeight: 600 }}>Solo lectura</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── MAIN CANVAS ──────────────────────────────── */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
+
+        {locations.length === 0 && !loadingData && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 16, textAlign: 'center', padding: 32,
+          }}>
+            <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: t.emptyIcon, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <MapPin size={32} style={{ color: t.emptyIconFg }} />
+            </div>
+            <h2 style={{ color: t.textMuted, fontSize: 20, fontWeight: 700, margin: 0 }}>Sin ubicaciones</h2>
+            <p style={{ color: t.textSub, fontSize: 14, margin: 0, maxWidth: 360 }}>
+              {isSuperAdmin
+                ? 'Este tenant no tiene ubicaciones. Configuralo desde el panel de administración.'
+                : 'No hay ubicaciones disponibles. Contactá a tu administrador.'}
+            </p>
+            {!can.editDashboard && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#f59e0b', fontSize: 13 }}>
+                <Lock size={14} />
+                <span>Permisos insuficientes para crear ubicaciones</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {loadingData && locations.length === 0 && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 12,
+          }}>
+            <Loader2 size={36} style={{ color: '#3b82f6', animation: 'spin 1s linear infinite' }} />
+            <p style={{ color: t.textMuted, fontSize: 14, fontWeight: 600, margin: 0 }}>Cargando…</p>
+          </div>
+        )}
+
+        {activeLocation && <SchematicView />}
+      </div>
+
+      {isSuperAdmin && (
+        <MqttAuditor isOpen={isMqttAuditorOpen} onClose={() => setIsMqttAuditorOpen(false)} />
+      )}
+
+      <style>{`
+        @keyframes spin       { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes mqttPulse  { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+      `}</style>
+    </div>
+  );
 };
+
 export default Dashboard;

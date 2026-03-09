@@ -4,11 +4,9 @@ import { db } from '../../../firebase/config';
 import { useAuth } from '../../auth/context/AuthContext';
 import { useMqtt } from '../../mqtt/context/MqttContext';
 import { arrayMove } from '@dnd-kit/sortable';
+import { applyNodeChanges, applyEdgeChanges, addEdge as rfAddEdge } from '@xyflow/react';
 
 const DashboardContext = createContext();
-
-const INITIAL_MACHINES = []; 
-const INITIAL_WIDGETS = [];
 
 export const DashboardProvider = ({ children }) => {
   const { userProfile } = useAuth();
@@ -18,45 +16,36 @@ export const DashboardProvider = ({ children }) => {
   const [locations, setLocations] = useState([]);
   const [activeLocation, setActiveLocation] = useState(null);
 
-  const [machines, setMachines] = useState(INITIAL_MACHINES);
-  const [widgets, setWidgets] = useState(INITIAL_WIDGETS);
+  const [machines, setMachines] = useState([]);
+  const [widgets, setWidgets] = useState([]);
   const [activeMachineId, setActiveMachineId] = useState(null);
-  
+
+  const [diagramNodes, setDiagramNodes] = useState([]);
+  const [diagramEdges, setDiagramEdges] = useState([]);
+  const diagramNodesRef = useRef([]);
+  const diagramEdgesRef = useRef([]);
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-
   const [chartData, setChartData] = useState({});
 
-  const widgetDataStore = useRef({
-    metric: {},
-    gauge: {},
-    chart: {},
-    switch: {}
-  });
+  const widgetDataStore = useRef({ metric: {}, gauge: {}, chart: {}, switch: {} });
 
-  const getWidgetData = (type, id) => {
-    return widgetDataStore.current[type]?.[id];
-  };
+  useEffect(() => { diagramNodesRef.current = diagramNodes; }, [diagramNodes]);
+  useEffect(() => { diagramEdgesRef.current = diagramEdges; }, [diagramEdges]);
+
+  const getWidgetData = (type, id) => widgetDataStore.current[type]?.[id];
 
   const setWidgetData = (type, id, data) => {
-    if (!widgetDataStore.current[type]) {
-      widgetDataStore.current[type] = {};
-    }
+    if (!widgetDataStore.current[type]) widgetDataStore.current[type] = {};
     widgetDataStore.current[type][id] = data;
   };
 
   const clearWidgetData = () => {
-    widgetDataStore.current = {
-      metric: {},
-      gauge: {},
-      chart: {},
-      switch: {}
-    };
+    widgetDataStore.current = { metric: {}, gauge: {}, chart: {}, switch: {} };
   };
 
-  const getChartData = useCallback((widgetId) => {
-    return chartData[widgetId] || [];
-  }, [chartData]);
+  const getChartData = useCallback((widgetId) => chartData[widgetId] || [], [chartData]);
 
   const clearChartData = useCallback((widgetId) => {
     setChartData(prev => {
@@ -70,66 +59,49 @@ export const DashboardProvider = ({ children }) => {
     setChartData(prev => {
       const existing = prev[widgetId] || [];
       const updated = [...existing, dataPoint];
-      
-      const MAX_POINTS = 1000;
-      if (updated.length > MAX_POINTS) {
-        return { ...prev, [widgetId]: updated.slice(-MAX_POINTS) };
-      }
-      
+      if (updated.length > 1000) return { ...prev, [widgetId]: updated.slice(-1000) };
       return { ...prev, [widgetId]: updated };
     });
   }, []);
 
   useEffect(() => {
-    if (userProfile?.tenantId) {
-        setViewedTenantId(userProfile.tenantId);
-    }
+    if (userProfile?.tenantId) setViewedTenantId(userProfile.tenantId);
   }, [userProfile]);
 
   useEffect(() => {
     if (!viewedTenantId) return;
-
     const fetchLocations = async () => {
-        setLoadingData(true);
-        try {
-            const locRef = collection(db, "tenants", viewedTenantId, "locations");
-            const snapshot = await getDocs(locRef);
-            
-            const locList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            setLocations(locList);
-
-            if (locList.length > 0) {
-                setActiveLocation(locList[0]);
-            } else {
-                setActiveLocation(null); 
-                setMachines([]);
-            }
-        } catch (e) {
-            console.error("Error loading locations:", e);
-        } finally {
-            setLoadingData(false);
-        }
+      setLoadingData(true);
+      try {
+        const locRef = collection(db, "tenants", viewedTenantId, "locations");
+        const snapshot = await getDocs(locRef);
+        const locList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setLocations(locList);
+        if (locList.length > 0) setActiveLocation(locList[0]);
+        else { setActiveLocation(null); setMachines([]); }
+      } catch (e) {
+        console.error("Error loading locations:", e);
+      } finally {
+        setLoadingData(false);
+      }
     };
-
     fetchLocations();
   }, [viewedTenantId]);
 
   useEffect(() => {
     if (!viewedTenantId || !activeLocation) {
-        setMachines([]); 
-        disconnect();
-        clearWidgetData();
-        return;
+      setMachines([]);
+      setDiagramNodes([]);
+      setDiagramEdges([]);
+      disconnect();
+      clearWidgetData();
+      return;
     }
 
     setLoadingData(true);
-    console.log(`📍 Loading Location: ${activeLocation.name}`);
 
-    if (activeLocation.mqtt_config) {
-        connectToBroker(activeLocation.mqtt_config);
-    } else {
-        disconnect();
-    }
+    if (activeLocation.mqtt_config) connectToBroker(activeLocation.mqtt_config);
+    else disconnect();
 
     const docRef = doc(db, "tenants", viewedTenantId, "locations", activeLocation.id);
 
@@ -137,39 +109,35 @@ export const DashboardProvider = ({ children }) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         const layout = data.layout || {};
+        const diagramData = data.diagram || {};
 
         let machineList = layout.machines || [];
-        
+
         if (machineList.length === 0) {
-          const defaultMachine = {
-            id: `m-${Date.now()}`,
-            name: "General"
-          };
+          const defaultMachine = { id: `m-${Date.now()}`, name: "General" };
           machineList = [defaultMachine];
-          
           await setDoc(docRef, {
-            layout: { 
-              machines: machineList, 
-              widgets: [] 
-            },
+            layout: { machines: machineList, widgets: [] },
             updatedAt: new Date().toISOString()
           }, { merge: true });
         }
 
         setMachines(machineList);
         setWidgets(layout.widgets || []);
-        
         setActiveMachineId(prev => {
-            if (machineList.length === 0) return null;
-            const exists = machineList.find(m => m.id === prev);
-            return exists ? prev : machineList[0].id;
+          if (machineList.length === 0) return null;
+          const exists = machineList.find(m => m.id === prev);
+          return exists ? prev : machineList[0].id;
         });
+
+        setDiagramNodes(diagramData.nodes || []);
+        setDiagramEdges(diagramData.edges || []);
       }
       setLoadingData(false);
     });
 
     return () => unsubscribe();
-  }, [viewedTenantId, activeLocation]); 
+  }, [viewedTenantId, activeLocation]);
 
   const saveLayout = async (newMachines, newWidgets) => {
     if (!viewedTenantId || !activeLocation) return;
@@ -184,54 +152,128 @@ export const DashboardProvider = ({ children }) => {
     }
   };
 
+  const saveDiagram = useCallback(async (nodes, edges) => {
+    if (!viewedTenantId || !activeLocation) return;
+    try {
+      const docRef = doc(db, "tenants", viewedTenantId, "locations", activeLocation.id);
+      await setDoc(docRef, {
+        diagram: { nodes, edges },
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.error("Error saving diagram:", err);
+    }
+  }, [viewedTenantId, activeLocation]);
+
+  const onNodesChange = useCallback((changes) => {
+    setDiagramNodes(prev => {
+      const updated = applyNodeChanges(changes, prev);
+      const hasMoveEnd = changes.some(c => c.type === 'position' && c.dragging === false);
+      if (hasMoveEnd) saveDiagram(updated, diagramEdgesRef.current);
+      return updated;
+    });
+  }, [saveDiagram]);
+
+  const onEdgesChange = useCallback((changes) => {
+    setDiagramEdges(prev => {
+      const updated = applyEdgeChanges(changes, prev);
+      saveDiagram(diagramNodesRef.current, updated);
+      return updated;
+    });
+  }, [saveDiagram]);
+
+  const onConnect = useCallback((connection) => {
+    setDiagramEdges(prev => {
+      const updated = rfAddEdge(
+        { ...connection, type: 'smoothstep', id: `e-${Date.now()}` },
+        prev
+      );
+      saveDiagram(diagramNodesRef.current, updated);
+      return updated;
+    });
+  }, [saveDiagram]);
+
+  const addDiagramNode = useCallback((machineId, machineName, deviceType = 'generic') => {
+    const offset = diagramNodesRef.current.length * 40;
+    const newNode = {
+      id: machineId,
+      type: 'schemNode',
+      position: { x: 80 + offset, y: 80 + offset },
+      data: { machineId, label: machineName, deviceType }
+    };
+    setDiagramNodes(prev => {
+      const updated = [...prev, newNode];
+      saveDiagram(updated, diagramEdgesRef.current);
+      return updated;
+    });
+  }, [saveDiagram]);
+
+  const removeDiagramNode = useCallback((machineId) => {
+    setDiagramNodes(prev => {
+      const updatedNodes = prev.filter(n => n.id !== machineId);
+      const updatedEdges = diagramEdgesRef.current.filter(
+        e => e.source !== machineId && e.target !== machineId
+      );
+      setDiagramEdges(updatedEdges);
+      saveDiagram(updatedNodes, updatedEdges);
+      return updatedNodes;
+    });
+  }, [saveDiagram]);
+
+  const updateDiagramNode = useCallback((machineId, data) => {
+    setDiagramNodes(prev => {
+      const updated = prev.map(n =>
+        n.id === machineId ? { ...n, data: { ...n.data, ...data } } : n
+      );
+      saveDiagram(updated, diagramEdgesRef.current);
+      return updated;
+    });
+  }, [saveDiagram]);
+
   const switchTenant = (id) => {
-      setViewedTenantId(id);
-      setActiveLocation(null); 
-      clearWidgetData();
+    setViewedTenantId(id);
+    setActiveLocation(null);
+    clearWidgetData();
   };
 
   const switchLocation = (locationId) => {
-      const target = locations.find(l => l.id === locationId);
-      if (target) {
-        setActiveLocation(target);
-        clearWidgetData();
-      }
+    const target = locations.find(l => l.id === locationId);
+    if (target) { setActiveLocation(target); clearWidgetData(); }
   };
 
-  const addMachine = (name) => {
+  const addMachine = (name, deviceType = 'generic') => {
     const newId = `m-${Date.now()}`;
     const newMachines = [...machines, { id: newId, name }];
     setMachines(newMachines);
     setActiveMachineId(newId);
     saveLayout(newMachines, widgets);
+    addDiagramNode(newId, name, deviceType);
   };
-  
+
   const addWidget = (w) => {
-     const up = [...widgets, { ...w, id: Date.now().toString(), machineId: activeMachineId }];
-     setWidgets(up);
-     saveLayout(machines, up);
+    const up = [...widgets, { ...w, id: Date.now().toString(), machineId: activeMachineId }];
+    setWidgets(up);
+    saveLayout(machines, up);
   };
 
   const updateWidget = (updatedWidget) => {
-    const updatedWidgets = widgets.map(w => 
-      w.id === updatedWidget.id ? updatedWidget : w
-    );
+    const updatedWidgets = widgets.map(w => w.id === updatedWidget.id ? updatedWidget : w);
     setWidgets(updatedWidgets);
     saveLayout(machines, updatedWidgets);
   };
-  
+
   const removeWidget = (id) => {
-      const up = widgets.filter(w => w.id !== id);
-      setWidgets(up);
-      saveLayout(machines, up);
+    const up = widgets.filter(w => w.id !== id);
+    setWidgets(up);
+    saveLayout(machines, up);
   };
-  
+
   const reorderWidgets = (o, n) => {
-      const up = arrayMove(widgets, o, n);
-      setWidgets(up);
-      saveLayout(machines, up);
+    const up = arrayMove(widgets, o, n);
+    setWidgets(up);
+    saveLayout(machines, up);
   };
-  
+
   const removeMachine = (id) => {
     const nm = machines.filter(m => m.id !== id);
     const nw = widgets.filter(w => w.machineId !== id);
@@ -239,33 +281,39 @@ export const DashboardProvider = ({ children }) => {
     setWidgets(nw);
     setActiveMachineId(nm[0]?.id || null);
     saveLayout(nm, nw);
+    removeDiagramNode(id);
   };
 
   const loadProfile = (data) => {
-      if(data.machines) setMachines(data.machines);
-      if(data.widgets) setWidgets(data.widgets);
-      
-      if(data.mqtt_config && activeLocation) {
-           const docRef = doc(db, "tenants", viewedTenantId, "locations", activeLocation.id);
-           setDoc(docRef, { mqtt_config: data.mqtt_config }, { merge: true });
-           connectToBroker(data.mqtt_config);
-      }
-      
-      saveLayout(data.machines || machines, data.widgets || widgets);
+    if (data.machines) setMachines(data.machines);
+    if (data.widgets) setWidgets(data.widgets);
+    if (data.diagram) {
+      setDiagramNodes(data.diagram.nodes || []);
+      setDiagramEdges(data.diagram.edges || []);
+    }
+    if (data.mqtt_config && activeLocation) {
+      const docRef = doc(db, "tenants", viewedTenantId, "locations", activeLocation.id);
+      setDoc(docRef, { mqtt_config: data.mqtt_config }, { merge: true });
+      connectToBroker(data.mqtt_config);
+    }
+    saveLayout(data.machines || machines, data.widgets || widgets);
+    if (data.diagram) saveDiagram(data.diagram.nodes || [], data.diagram.edges || []);
   };
 
   return (
-    <DashboardContext.Provider value={{ 
+    <DashboardContext.Provider value={{
       isEditMode, setIsEditMode: (val) => setIsEditMode(val), toggleEditMode: () => setIsEditMode(!isEditMode),
       machines, activeMachineId, setActiveMachineId,
-      widgets, addWidget, removeWidget, reorderWidgets, addMachine, removeMachine,
+      widgets, addWidget, removeWidget, reorderWidgets, addMachine, removeMachine, updateWidget,
       loadProfile, loadingData,
       viewedTenantId, switchTenant,
-      locations, activeLocation, switchLocation, updateWidget,
-      getWidgetData, setWidgetData,  chartData,
-      getChartData,
-      addChartPoint,
-      clearChartData
+      locations, activeLocation, switchLocation,
+      getWidgetData, setWidgetData,
+      chartData, getChartData, addChartPoint, clearChartData,
+      diagramNodes, diagramEdges,
+      onNodesChange, onEdgesChange, onConnect,
+      addDiagramNode, removeDiagramNode, updateDiagramNode,
+      saveDiagram
     }}>
       {children}
     </DashboardContext.Provider>
