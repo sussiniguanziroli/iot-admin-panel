@@ -156,7 +156,7 @@ const MainLayout = () => {
           </div>
         </div>
 
-        <nav className={`flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden ${isSidebarCollapsed ? 'md:px-2' : 'px-2.5'}`}>
+        <nav className={`flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden px-2.5 ${isSidebarCollapsed ? 'md:px-2' : ''}`}>
           {menuItems.filter(i => i.show).map((item) => {
             const isActive = location.pathname === item.path ||
               (item.path !== '/app/dashboard' && location.pathname.startsWith(item.path));
@@ -166,8 +166,8 @@ const MainLayout = () => {
                 onClick={() => { navigate(item.path); setSidebarOpen(false); }}
                 title={isSidebarCollapsed ? item.label : ''}
                 className={`
-                  w-full flex items-center rounded-xl transition-all duration-150
-                  ${isSidebarCollapsed ? 'md:justify-center md:p-3' : 'gap-3 px-3 py-2.5'}
+                  w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150
+                  ${isSidebarCollapsed ? 'md:justify-center md:px-0 md:py-3 md:gap-0' : ''}
                   ${isActive
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
                     : 'text-slate-500 hover:bg-white/[0.06] hover:text-slate-200'
@@ -175,24 +175,26 @@ const MainLayout = () => {
                 `}
               >
                 <span className="shrink-0">{item.icon}</span>
-                {!isSidebarCollapsed && <span className="font-medium text-sm whitespace-nowrap">{item.label}</span>}
+                <span className={`font-medium text-sm whitespace-nowrap ${isSidebarCollapsed ? 'md:hidden' : ''}`}>
+                  {item.label}
+                </span>
               </button>
             );
           })}
         </nav>
 
-        <div className={`border-t border-white/[0.06] py-3 shrink-0 ${isSidebarCollapsed ? 'md:px-2' : 'px-2.5'}`}>
+        <div className={`border-t border-white/[0.06] py-3 shrink-0 px-2.5 ${isSidebarCollapsed ? 'md:px-2' : ''}`}>
           <button
             onClick={handleLogout}
             title={isSidebarCollapsed ? 'Sign Out' : ''}
             className={`
-              w-full flex items-center rounded-xl transition-all duration-150
+              w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150
               text-slate-500 hover:bg-white/[0.06] hover:text-slate-200
-              ${isSidebarCollapsed ? 'md:justify-center md:p-3' : 'gap-3 px-3 py-2.5'}
+              ${isSidebarCollapsed ? 'md:justify-center md:px-0 md:py-3 md:gap-0' : ''}
             `}
           >
             <LogOut size={18} className="shrink-0" />
-            {!isSidebarCollapsed && <span className="text-sm font-medium">Sign Out</span>}
+            <span className={`text-sm font-medium ${isSidebarCollapsed ? 'md:hidden' : ''}`}>Sign Out</span>
           </button>
         </div>
       </aside>
