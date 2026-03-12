@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
   Menu, X, LayoutDashboard, BarChart2, Users, Edit3, Check,
-  Wifi, WifiOff, Settings, LogOut, Download, Upload, User, Building2, Shield
+  Wifi, WifiOff, Settings, LogOut, Download, Upload, User,
+  Building2, Shield, ChevronLeft
 } from 'lucide-react';
 import { useDashboard } from '../../../features/dashboard/context/DashboardContext';
 import { useMqtt } from '../../../features/mqtt/context/MqttContext';
@@ -12,6 +13,9 @@ import ConnectionModal from '../ui/ConnectionModal';
 
 const MainLayout = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
+    () => localStorage.getItem('sidebarCollapsed') !== 'false'
+  );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMqttModalOpen, setIsMqttModalOpen] = useState(false);
 
@@ -25,6 +29,14 @@ const MainLayout = () => {
   const { can, isSuperAdmin, isAdmin } = usePermissions();
 
   const isDashboard = location.pathname.includes('dashboard');
+
+  const toggleSidebarCollapsed = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('sidebarCollapsed', String(next));
+      return next;
+    });
+  };
 
   const handleExport = () => {
     const data = {
@@ -90,19 +102,61 @@ const MainLayout = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans transition-colors duration-200">
       <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#1e293b] dark:bg-slate-950 text-white transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
-        <div className="p-6 border-b border-slate-700 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">F</div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold tracking-wider">FORTUNATO</span>
-              <span className="text-[10px] text-slate-400 uppercase">{userProfile?.role?.replace('_', ' ') || 'Guest'}</span>
-            </div>
+      <aside className={`
+        fixed inset-y-0 left-0 z-50
+        bg-[#0f172a] text-white flex flex-col
+        transition-all duration-300 ease-in-out
+        w-64
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:translate-x-0 md:static md:shrink-0
+        ${isSidebarCollapsed ? 'md:w-[68px]' : 'md:w-64'}
+      `}>
+
+        <div className="h-14 border-b border-white/[0.06] flex items-center shrink-0">
+          <div className={`hidden md:flex w-full items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between px-4'}`}>
+            {isSidebarCollapsed ? (
+              <button
+                onClick={toggleSidebarCollapsed}
+                title="Expand sidebar"
+                className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-sm hover:bg-blue-500 transition-colors"
+              >
+                F
+              </button>
+            ) : (
+              <>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-sm shrink-0">F</div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold tracking-widest text-white">FORTUNATO</span>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">{userProfile?.role?.replace('_', ' ') || 'Guest'}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={toggleSidebarCollapsed}
+                  title="Collapse sidebar"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-600 hover:text-slate-200 hover:bg-white/10 transition-all"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+              </>
+            )}
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white"><X size={24} /></button>
+
+          <div className="flex md:hidden w-full items-center justify-between px-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-sm">F</div>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold tracking-widest">FORTUNATO</span>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider">{userProfile?.role?.replace('_', ' ') || 'Guest'}</span>
+              </div>
+            </div>
+            <button onClick={() => setSidebarOpen(false)} className="p-1.5 text-slate-500 hover:text-white rounded-lg hover:bg-white/10 transition-all">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        <nav className="p-4 space-y-2">
+        <nav className={`flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden ${isSidebarCollapsed ? 'md:px-2' : 'px-2.5'}`}>
           {menuItems.filter(i => i.show).map((item) => {
             const isActive = location.pathname === item.path ||
               (item.path !== '/app/dashboard' && location.pathname.startsWith(item.path));
@@ -110,31 +164,49 @@ const MainLayout = () => {
               <button
                 key={item.path}
                 onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                title={isSidebarCollapsed ? item.label : ''}
+                className={`
+                  w-full flex items-center rounded-xl transition-all duration-150
+                  ${isSidebarCollapsed ? 'md:justify-center md:p-3' : 'gap-3 px-3 py-2.5'}
+                  ${isActive
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+                    : 'text-slate-500 hover:bg-white/[0.06] hover:text-slate-200'
+                  }
+                `}
               >
-                {item.icon} <span className="font-medium">{item.label}</span>
+                <span className="shrink-0">{item.icon}</span>
+                {!isSidebarCollapsed && <span className="font-medium text-sm whitespace-nowrap">{item.label}</span>}
               </button>
             );
           })}
         </nav>
 
-        <div className="absolute bottom-0 w-full p-4 border-t border-slate-700">
-          <button onClick={handleLogout} className="flex items-center gap-3 text-slate-400 hover:text-white transition-colors w-full px-4 py-2">
-            <LogOut size={18} /><span>Sign Out</span>
+        <div className={`border-t border-white/[0.06] py-3 shrink-0 ${isSidebarCollapsed ? 'md:px-2' : 'px-2.5'}`}>
+          <button
+            onClick={handleLogout}
+            title={isSidebarCollapsed ? 'Sign Out' : ''}
+            className={`
+              w-full flex items-center rounded-xl transition-all duration-150
+              text-slate-500 hover:bg-white/[0.06] hover:text-slate-200
+              ${isSidebarCollapsed ? 'md:justify-center md:p-3' : 'gap-3 px-3 py-2.5'}
+            `}
+          >
+            <LogOut size={18} className="shrink-0" />
+            {!isSidebarCollapsed && <span className="text-sm font-medium">Sign Out</span>}
           </button>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-16 flex items-center justify-between px-4 md:px-8 shadow-sm z-40 relative transition-colors duration-200 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-14 flex items-center justify-between px-4 md:px-5 shadow-sm z-40 relative transition-colors duration-200 shrink-0">
+          <div className="flex items-center gap-3">
             <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">
-              <Menu size={24} />
+              <Menu size={20} />
             </button>
-            <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200 hidden sm:block">{getPageTitle()}</h2>
+            <h2 className="text-xs font-semibold text-slate-500 dark:text-slate-400 hidden sm:block tracking-widest uppercase">{getPageTitle()}</h2>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {can.viewMqttStatus && (
               <>
                 {can.configureMqtt ? (
@@ -145,17 +217,17 @@ const MainLayout = () => {
                         connectionStatus === 'connecting'  ? 'bg-yellow-50 text-yellow-600 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800' :
                         'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800'}`}
                   >
-                    {connectionStatus === 'connected' ? <Wifi size={14} /> : <WifiOff size={14} />}
+                    {connectionStatus === 'connected' ? <Wifi size={13} /> : <WifiOff size={13} />}
                     <span className="hidden sm:inline">
                       {connectionStatus === 'connected' ? 'ONLINE' : connectionStatus === 'connecting' ? 'CONNECTING' : 'OFFLINE'}
                     </span>
-                    <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                    <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                   </button>
                 ) : (
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border
                     ${connectionStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' :
                     'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>
-                    <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                    <div className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                     {connectionStatus === 'connected' ? 'SYSTEM ONLINE' : 'CONNECTING...'}
                   </div>
                 )}
@@ -165,13 +237,13 @@ const MainLayout = () => {
             {isDashboard && can.editDashboard && (
               <button
                 onClick={toggleEditMode}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs transition-all ${
                   isEditMode
                     ? 'bg-orange-100 text-orange-600 ring-2 ring-orange-400 dark:bg-orange-900/30 dark:text-orange-400'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
                 }`}
               >
-                {isEditMode ? <Check size={18} /> : <Edit3 size={18} />}
+                {isEditMode ? <Check size={14} /> : <Edit3 size={14} />}
                 <span className="hidden sm:inline">{isEditMode ? 'Listo' : 'Editar'}</span>
               </button>
             )}
@@ -179,36 +251,36 @@ const MainLayout = () => {
             <div className="relative">
               <button
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
                   isSettingsOpen
                     ? 'bg-slate-200 text-slate-800 dark:bg-slate-600 dark:text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600'
                 }`}
               >
-                <Settings size={20} />
+                <Settings size={16} />
               </button>
 
               {isSettingsOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setIsSettingsOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right z-20">
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden z-20">
                     <div className="px-4 py-3 border-b border-slate-50 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                       <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Settings</p>
                       <p className="text-xs text-slate-400">Account Management</p>
                     </div>
-                    <div className="p-2 space-y-1">
+                    <div className="p-2 space-y-0.5">
                       <button onClick={() => { navigate('/app/profile'); setIsSettingsOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors text-left">
-                        <User size={16} /> My Profile
+                        <User size={15} /> My Profile
                       </button>
                       {(can.exportProfile || can.importProfile) && <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />}
                       {can.exportProfile && (
                         <button onClick={handleExport} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors text-left">
-                          <Download size={16} /> Export Profile
+                          <Download size={15} /> Export Profile
                         </button>
                       )}
                       {can.importProfile && (
                         <button onClick={handleImportClick} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-colors text-left">
-                          <Upload size={16} /> Import Profile
+                          <Upload size={15} /> Import Profile
                         </button>
                       )}
                     </div>
@@ -229,7 +301,7 @@ const MainLayout = () => {
       </div>
 
       {can.configureMqtt && <ConnectionModal isOpen={isMqttModalOpen} onClose={() => setIsMqttModalOpen(false)} />}
-      {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
+      {isSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
     </div>
   );
 };
