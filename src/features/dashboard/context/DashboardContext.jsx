@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { doc, onSnapshot, setDoc, collection, getDocs, query } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { useAuth } from '../../auth/context/AuthContext';
 import { useMqtt } from '../../mqtt/context/MqttContext';
@@ -28,6 +28,7 @@ export const DashboardProvider = ({ children }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [chartData, setChartData] = useState({});
+  const [nodeDisplayValues, setNodeDisplayValues] = useState({});
 
   const widgetDataStore = useRef({ metric: {}, gauge: {}, chart: {}, switch: {} });
 
@@ -36,13 +37,70 @@ export const DashboardProvider = ({ children }) => {
 
   const getWidgetData = (type, id) => widgetDataStore.current[type]?.[id];
 
-  const setWidgetData = (type, id, data) => {
+  const setWidgetData = useCallback((type, id, liveData) => {
     if (!widgetDataStore.current[type]) widgetDataStore.current[type] = {};
-    widgetDataStore.current[type][id] = data;
-  };
+    widgetDataStore.current[type][id] = liveData;
+
+    const watchingNodes = diagramNodesRef.current.filter(n =>
+      n.data.displayWidgetId === id || n.data.powerWidgetId === id
+    );
+
+    if (watchingNodes.length === 0) return;
+
+    setNodeDisplayValues(prev => {
+      const next = { ...prev };
+      let changed = false;
+
+      watchingNodes.forEach(node => {
+        const { machineId, displayWidgetId, powerWidgetId, deviceType } = node.data;
+        const cur = next[machineId] || {};
+
+        const newDisplayValue = displayWidgetId === id ? liveData.value : cur.displayValue;
+        const newDisplayUnit  = displayWidgetId === id ? (liveData.unit || '') : cur.displayUnit;
+        const newIsOnline     = powerWidgetId === id
+          ? (typeof liveData.value === 'boolean' ? liveData.value : Number(liveData.value) > 0)
+          : cur.isOnline;
+
+        if (
+          cur.displayValue !== newDisplayValue ||
+          cur.displayUnit  !== newDisplayUnit  ||
+          cur.isOnline     !== newIsOnline
+        ) {
+          next[machineId] = { ...cur, displayValue: newDisplayValue, displayUnit: newDisplayUnit, isOnline: newIsOnline };
+          changed = true;
+
+          if (powerWidgetId === id && deviceType === 'recloser') {
+            const recloserOnline = newIsOnline;
+            setDiagramEdges(prevEdges => {
+              const outgoing = prevEdges.filter(e => e.source === machineId);
+              if (outgoing.length === 0) return prevEdges;
+              const updatedEdges = prevEdges.map(e => {
+                if (e.source !== machineId) return e;
+                return {
+                  ...e,
+                  data: {
+                    ...e.data,
+                    hasFlow:   recloserOnline,
+                    flowColor: recloserOnline ? '#22c55e' : '#334155',
+                  },
+                };
+              });
+              saveDiagramRef.current(diagramNodesRef.current, updatedEdges);
+              return updatedEdges;
+            });
+          }
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, []);
+
+  const saveDiagramRef = useRef(null);
 
   const clearWidgetData = () => {
     widgetDataStore.current = { metric: {}, gauge: {}, chart: {}, switch: {} };
+    setNodeDisplayValues({});
   };
 
   const getChartData = useCallback((widgetId) => chartData[widgetId] || [], [chartData]);
@@ -108,7 +166,7 @@ export const DashboardProvider = ({ children }) => {
     const unsubscribe = onSnapshot(docRef, async (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        const layout = data.layout || {};
+        const layout      = data.layout  || {};
         const diagramData = data.diagram || {};
 
         let machineList = layout.machines || [];
@@ -165,6 +223,8 @@ export const DashboardProvider = ({ children }) => {
     }
   }, [viewedTenantId, activeLocation]);
 
+  useEffect(() => { saveDiagramRef.current = saveDiagram; }, [saveDiagram]);
+
   const onNodesChange = useCallback((changes) => {
     setDiagramNodes(prev => {
       const updated = applyNodeChanges(changes, prev);
@@ -185,8 +245,23 @@ export const DashboardProvider = ({ children }) => {
   const onConnect = useCallback((connection) => {
     setDiagramEdges(prev => {
       const updated = rfAddEdge(
-        { ...connection, type: 'smoothstep', id: `e-${Date.now()}` },
+        {
+          ...connection,
+          type: 'flowEdge',
+          id: `e-${Date.now()}`,
+          data: { hasFlow: false, flowColor: '#22d3ee' },
+        },
         prev
+      );
+      saveDiagram(diagramNodesRef.current, updated);
+      return updated;
+    });
+  }, [saveDiagram]);
+
+  const updateEdge = useCallback((edgeId, data) => {
+    setDiagramEdges(prev => {
+      const updated = prev.map(e =>
+        e.id === edgeId ? { ...e, data: { ...e.data, ...data } } : e
       );
       saveDiagram(diagramNodesRef.current, updated);
       return updated;
@@ -199,7 +274,13 @@ export const DashboardProvider = ({ children }) => {
       id: machineId,
       type: 'schemNode',
       position: { x: 80 + offset, y: 80 + offset },
-      data: { machineId, label: machineName, deviceType }
+      data: {
+        machineId,
+        label: machineName,
+        deviceType,
+        displayWidgetId: null,
+        powerWidgetId: null,
+      },
     };
     setDiagramNodes(prev => {
       const updated = [...prev, newNode];
@@ -286,7 +367,7 @@ export const DashboardProvider = ({ children }) => {
 
   const loadProfile = (data) => {
     if (data.machines) setMachines(data.machines);
-    if (data.widgets) setWidgets(data.widgets);
+    if (data.widgets)  setWidgets(data.widgets);
     if (data.diagram) {
       setDiagramNodes(data.diagram.nodes || []);
       setDiagramEdges(data.diagram.edges || []);
@@ -310,10 +391,11 @@ export const DashboardProvider = ({ children }) => {
       locations, activeLocation, switchLocation,
       getWidgetData, setWidgetData,
       chartData, getChartData, addChartPoint, clearChartData,
+      nodeDisplayValues,
       diagramNodes, diagramEdges,
       onNodesChange, onEdgesChange, onConnect,
-      addDiagramNode, removeDiagramNode, updateDiagramNode,
-      saveDiagram
+      addDiagramNode, removeDiagramNode, updateDiagramNode, updateEdge,
+      saveDiagram,
     }}>
       {children}
     </DashboardContext.Provider>

@@ -12,17 +12,18 @@ import '@xyflow/react/dist/style.css';
 import { useDashboard } from '../context/DashboardContext';
 import { usePermissions } from '../../../shared/hooks/usePermissions';
 import SchemNode from './SchemNode';
+import FlowEdge from './FlowEdge';
 import NodeSidePanel from './NodeSidePanel';
 import AddNodeModal from './AddNodeModal';
 import { getDeviceConfig } from './deviceRegistry';
 import { Plus, Maximize2, Lock, Unlock, Loader2 } from 'lucide-react';
 
 const nodeTypes = { schemNode: SchemNode };
+const edgeTypes = { flowEdge: FlowEdge };
 
 const defaultEdgeOptions = {
-  type: 'smoothstep',
-  style: { stroke: '#334155', strokeWidth: 2 },
-  animated: false,
+  type: 'flowEdge',
+  data: { hasFlow: false, flowColor: '#22d3ee' },
 };
 
 const connectionLineStyle = {
@@ -31,12 +32,15 @@ const connectionLineStyle = {
   strokeDasharray: '6 3',
 };
 
+const SNAP_GRID = [160, 160];
+
 const SchematicCanvas = () => {
   const {
     diagramNodes, diagramEdges,
     onNodesChange, onEdgesChange, onConnect,
     isEditMode, toggleEditMode,
     machines, loadingData, addMachine,
+    updateEdge,
   } = useDashboard();
   const { can } = usePermissions();
 
@@ -57,6 +61,11 @@ const SchematicCanvas = () => {
     setIsPanelOpen(false);
   }, []);
 
+  const onEdgeClick = useCallback((_, edge) => {
+    if (!isEditMode || !can.editDashboard) return;
+    updateEdge(edge.id, { hasFlow: !edge.data?.hasFlow });
+  }, [isEditMode, can.editDashboard, updateEdge]);
+
   const selectedMachine = machines.find(m => m.id === selectedMachineId) || null;
 
   const miniMapNodeColor = useCallback((node) => {
@@ -74,12 +83,16 @@ const SchematicCanvas = () => {
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
+        onEdgeClick={onEdgeClick}
         onInit={setRfInstance}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         nodesDraggable={isEditMode && can.editDashboard}
         nodesConnectable={isEditMode && can.editDashboard}
         edgesReconnectable={isEditMode && can.editDashboard}
         elementsSelectable
+        snapToGrid
+        snapGrid={SNAP_GRID}
         deleteKeyCode={isEditMode && can.editDashboard ? 'Delete' : null}
         defaultEdgeOptions={defaultEdgeOptions}
         connectionLineStyle={connectionLineStyle}
@@ -91,8 +104,8 @@ const SchematicCanvas = () => {
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={28}
-          size={1}
+          gap={160}
+          size={2}
           color="#1e293b"
         />
 
@@ -156,6 +169,16 @@ const SchematicCanvas = () => {
               </button>
             )}
 
+            {isEditMode && can.editDashboard && (
+              <div style={{
+                padding: '6px 10px', borderRadius: 10,
+                backgroundColor: '#1e293b', outline: '1px solid #334155',
+                fontSize: 10, fontWeight: 600, color: '#475569', whiteSpace: 'nowrap',
+              }}>
+                Click en arista → toggle flujo
+              </div>
+            )}
+
             <button
               onClick={() => rfInstance?.fitView({ padding: 0.3, duration: 400 })}
               title="Ajustar vista"
@@ -203,6 +226,11 @@ const SchematicCanvas = () => {
         onClose={() => setIsAddModalOpen(false)}
         onSave={(name, devType) => { addMachine(name, devType); setIsAddModalOpen(false); }}
       />
+
+      <style>{`
+        @keyframes spin     { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes flowDash { to   { stroke-dashoffset: -28; } }
+      `}</style>
     </div>
   );
 };
