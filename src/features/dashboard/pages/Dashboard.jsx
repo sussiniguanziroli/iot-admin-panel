@@ -10,9 +10,11 @@ import { db } from '../../../firebase/config';
 
 import SchematicView from '../scheme/SchematicView';
 import MqttAuditor from '../../mqtt-auditor/MqttAuditor';
+import { getDashboardTheme } from '../ui/dashboardTheme';
+import CustomSelect from '../ui/CustomSelect';
 
 import {
-  Building, ChevronDown, Loader2, MapPin, AlertCircle,
+  Building, Loader2, MapPin, AlertCircle,
   Lock, Activity, Settings
 } from 'lucide-react';
 
@@ -37,29 +39,10 @@ const Dashboard = () => {
       .catch(e => console.error('Error fetching tenants:', e));
   }, [isSuperAdmin]);
 
-  const t = isDark ? {
-    bg:          '#020617',
-    barBg:       'rgba(10, 15, 35, 0.82)',
-    barBorder:   'rgba(255, 255, 255, 0.06)',
-    inputBg:     'rgba(255, 255, 255, 0.06)',
-    inputBorder: 'rgba(255, 255, 255, 0.10)',
-    textPrimary: '#f1f5f9',
-    textMuted:   '#64748b',
-    textSub:     '#475569',
-    emptyIcon:   '#1e293b',
-    emptyIconFg: '#334155',
-  } : {
-    bg:          '#f1f5f9',
-    barBg:       'rgba(255, 255, 255, 0.88)',
-    barBorder:   'rgba(203, 213, 225, 0.70)',
-    inputBg:     'rgba(241, 245, 249, 0.80)',
-    inputBorder: '#cbd5e1',
-    textPrimary: '#0f172a',
-    textMuted:   '#64748b',
-    textSub:     '#94a3b8',
-    emptyIcon:   '#e2e8f0',
-    emptyIconFg: '#cbd5e1',
-  };
+  const t = getDashboardTheme(isDark);
+
+  const tenantOptions = availableTenants.map(ten => ({ value: ten.id, label: ten.name }));
+  const locationOptions = locations.map(loc => ({ value: loc.id, label: loc.name }));
 
   const showFloatingBar = locations.length > 0 || isSuperAdmin;
 
@@ -99,27 +82,13 @@ const Dashboard = () => {
                 <div style={{ width: 24, height: 24, backgroundColor: '#4f46e5', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Building size={13} style={{ color: '#fff' }} />
                 </div>
-                <div style={{ position: 'relative' }}>
-                  <select
-                    value={viewedTenantId || ''}
-                    onChange={(e) => switchTenant(e.target.value)}
-                    style={{
-                      appearance: 'none',
-                      backgroundColor: t.inputBg,
-                      border: `1px solid ${t.inputBorder}`,
-                      color: t.textPrimary,
-                      paddingLeft: 8, paddingRight: 22, paddingTop: 4, paddingBottom: 4,
-                      borderRadius: 8, fontSize: 12, fontWeight: 700,
-                      cursor: 'pointer', outline: 'none',
-                    }}
-                  >
-                    <option value="" disabled>Seleccionar…</option>
-                    {availableTenants.map(ten => (
-                      <option key={ten.id} value={ten.id}>{ten.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={11} style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', color: t.textMuted, pointerEvents: 'none' }} />
-                </div>
+                <CustomSelect
+                  value={viewedTenantId || ''}
+                  onChange={(val) => switchTenant(val)}
+                  options={tenantOptions}
+                  isDark={isDark}
+                  t={t}
+                />
               </div>
             )}
 
@@ -130,29 +99,14 @@ const Dashboard = () => {
             {locations.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <MapPin size={13} style={{ color: t.textSub, flexShrink: 0 }} />
-                <div style={{ position: 'relative' }}>
-                  <select
-                    value={activeLocation?.id || ''}
-                    onChange={(e) => switchLocation(e.target.value)}
-                    disabled={!can.viewLocations}
-                    style={{
-                      appearance: 'none',
-                      backgroundColor: t.inputBg,
-                      border: `1px solid ${t.inputBorder}`,
-                      color: t.textPrimary,
-                      paddingLeft: 8, paddingRight: 22, paddingTop: 4, paddingBottom: 4,
-                      borderRadius: 8, fontSize: 12, fontWeight: 700,
-                      cursor: can.viewLocations ? 'pointer' : 'not-allowed',
-                      outline: 'none',
-                      opacity: can.viewLocations ? 1 : 0.55,
-                    }}
-                  >
-                    {locations.map(loc => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={11} style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', color: t.textMuted, pointerEvents: 'none' }} />
-                </div>
+                <CustomSelect
+                  value={activeLocation?.id || ''}
+                  onChange={(val) => switchLocation(val)}
+                  options={locationOptions}
+                  disabled={!can.viewLocations}
+                  isDark={isDark}
+                  t={t}
+                />
               </div>
             )}
 
