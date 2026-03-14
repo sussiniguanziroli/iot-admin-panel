@@ -17,7 +17,6 @@ const UsersTab = ({ tenantId, tenantName }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [tenantLimits, setTenantLimits] = useState(null);
-  const [tenantUsage, setTenantUsage] = useState(null);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'operator' });
@@ -33,9 +32,7 @@ const UsersTab = ({ tenantId, tenantName }) => {
     try {
       const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
       if (tenantDoc.exists()) {
-        const data = tenantDoc.data();
-        setTenantLimits(data.limits);
-        setTenantUsage(data.usage);
+        setTenantLimits(tenantDoc.data().limits);
       }
     } catch (e) {
       console.error(e);
@@ -47,8 +44,7 @@ const UsersTab = ({ tenantId, tenantName }) => {
     try {
       const q = query(collection(db, 'users'), where('tenantId', '==', tenantId));
       const snapshot = await getDocs(q);
-      const usersList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setUsers(usersList);
+      setUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
       console.error(e);
     } finally {
@@ -57,19 +53,19 @@ const UsersTab = ({ tenantId, tenantName }) => {
   };
 
   const canAddUser = () => {
-    if (!tenantLimits || !tenantUsage) return false;
-    return tenantUsage.users < tenantLimits.maxUsers;
+    if (!tenantLimits) return true;
+    if (tenantLimits.maxUsers === 999) return true;
+    return users.length < tenantLimits.maxUsers;
   };
 
   const getRemainingUsers = () => {
-    if (!tenantLimits || !tenantUsage) return 0;
-    return tenantLimits.maxUsers - tenantUsage.users;
+    if (!tenantLimits || tenantLimits.maxUsers === 999) return null;
+    return tenantLimits.maxUsers - users.length;
   };
 
   const getUsagePercentage = () => {
-    if (!tenantLimits || !tenantUsage) return 0;
-    if (tenantLimits.maxUsers === 999) return 0;
-    return (tenantUsage.users / tenantLimits.maxUsers) * 100;
+    if (!tenantLimits || tenantLimits.maxUsers === 999) return 0;
+    return (users.length / tenantLimits.maxUsers) * 100;
   };
 
   const handleGenerateInvite = async (e) => {
@@ -114,8 +110,7 @@ const UsersTab = ({ tenantId, tenantName }) => {
 
     try {
       await deleteDoc(doc(db, 'users', userId));
-      setUsers(users.filter(u => u.id !== userId));
-      await fetchTenantData();
+      setUsers(prev => prev.filter(u => u.id !== userId));
     } catch (e) {
       console.error(e);
       await Swal.fire({
@@ -191,12 +186,13 @@ const UsersTab = ({ tenantId, tenantName }) => {
   }
 
   const usagePercentage = getUsagePercentage();
+  const remaining = getRemainingUsers();
   const isNearLimit = usagePercentage >= 80 && tenantLimits?.maxUsers !== 999;
 
   return (
     <div className="space-y-6 animate-in fade-in">
 
-      {tenantLimits && tenantUsage && (
+      {tenantLimits && (
         <div className={`rounded-xl border-2 p-4 ${
           isNearLimit
             ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
@@ -210,14 +206,14 @@ const UsersTab = ({ tenantId, tenantName }) => {
               <div>
                 <p className="text-sm font-bold text-slate-800 dark:text-white">User Seats</p>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  {tenantUsage.users} of {tenantLimits.maxUsers === 999 ? '∞' : tenantLimits.maxUsers} seats used
+                  {users.length} of {tenantLimits.maxUsers === 999 ? '∞' : tenantLimits.maxUsers} seats used
                 </p>
               </div>
             </div>
             {tenantLimits.maxUsers !== 999 && (
               <div className="text-right">
                 <p className={`text-2xl font-bold ${isNearLimit ? 'text-orange-600 dark:text-orange-400' : 'text-purple-600 dark:text-purple-400'}`}>
-                  {getRemainingUsers()}
+                  {remaining}
                 </p>
                 <p className="text-xs text-slate-500">remaining</p>
               </div>

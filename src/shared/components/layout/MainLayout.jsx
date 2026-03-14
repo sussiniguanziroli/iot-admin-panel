@@ -236,19 +236,6 @@ const MainLayout = () => {
               </>
             )}
 
-            {isDashboard && can.editDashboard && (
-              <button
-                onClick={toggleEditMode}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-xs transition-all ${
-                  isEditMode
-                    ? 'bg-orange-100 text-orange-600 ring-2 ring-orange-400 dark:bg-orange-900/30 dark:text-orange-400'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
-                }`}
-              >
-                {isEditMode ? <Check size={14} /> : <Edit3 size={14} />}
-                <span className="hidden sm:inline">{isEditMode ? 'Listo' : 'Editar'}</span>
-              </button>
-            )}
 
             <div className="relative">
               <button

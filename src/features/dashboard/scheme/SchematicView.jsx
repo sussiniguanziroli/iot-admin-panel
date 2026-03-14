@@ -1,12 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import {
-  ReactFlow,
-  Background,
-  Controls,
-  MiniMap,
-  BackgroundVariant,
-  ReactFlowProvider,
-  Panel,
+  ReactFlow, Background, Controls, MiniMap,
+  BackgroundVariant, ReactFlowProvider, Panel,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useDashboard } from '../context/DashboardContext';
@@ -16,7 +11,7 @@ import FlowEdge from './FlowEdge';
 import NodeSidePanel from './NodeSidePanel';
 import AddNodeModal from './AddNodeModal';
 import { getDeviceConfig } from './deviceRegistry';
-import { Plus, Maximize2, Lock, Unlock, Loader2 } from 'lucide-react';
+import { Maximize2, Loader2 } from 'lucide-react';
 
 const nodeTypes = { schemNode: SchemNode };
 const edgeTypes = { flowEdge: FlowEdge };
@@ -34,13 +29,11 @@ const connectionLineStyle = {
 
 const SNAP_GRID = [160, 160];
 
-const SchematicCanvas = () => {
+const SchematicCanvas = forwardRef(({ onRequestAddNode }, ref) => {
   const {
     diagramNodes, diagramEdges,
     onNodesChange, onEdgesChange, onConnect,
-    isEditMode, toggleEditMode,
-    machines, loadingData, addMachine,
-    updateEdge,
+    isEditMode, machines, loadingData, addMachine, updateEdge,
   } = useDashboard();
   const { can } = usePermissions();
 
@@ -49,6 +42,11 @@ const SchematicCanvas = () => {
   const [isPanelOpen, setIsPanelOpen]               = useState(false);
   const [isAddModalOpen, setIsAddModalOpen]          = useState(false);
   const [rfInstance, setRfInstance]                  = useState(null);
+
+  useImperativeHandle(ref, () => ({
+    openAddModal:  () => setIsAddModalOpen(true),
+    fitView:       () => rfInstance?.fitView({ padding: 0.3, duration: 400 }),
+  }));
 
   const onNodeClick = useCallback((_, node) => {
     setSelectedMachineId(node.data.machineId);
@@ -102,17 +100,9 @@ const SchematicCanvas = () => {
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={160}
-          size={2}
-          color="#1e293b"
-        />
+        <Background variant={BackgroundVariant.Dots} gap={160} size={2} color="#1e293b" />
 
-        <Controls
-          showInteractive={false}
-          style={{ bottom: 24, left: 16 }}
-        />
+        <Controls showInteractive={false} style={{ bottom: 24, left: 16 }} />
 
         <MiniMap
           nodeColor={miniMapNodeColor}
@@ -128,57 +118,8 @@ const SchematicCanvas = () => {
           pannable
         />
 
-        <Panel position="top-left">
+        <Panel position="bottom-left" style={{ bottom: 72, left: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {can.editDashboard && (
-              <button
-                onClick={toggleEditMode}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 14px', borderRadius: 12, fontSize: 12, fontWeight: 700,
-                  cursor: 'pointer', border: 'none', transition: 'all 0.15s',
-                  backgroundColor: isEditMode ? '#f97316' : '#1e293b',
-                  color: isEditMode ? '#fff' : '#94a3b8',
-                  boxShadow: isEditMode ? '0 4px 16px rgba(249,115,22,0.3)' : 'none',
-                  outline: isEditMode ? 'none' : '1px solid #334155',
-                }}
-              >
-                {isEditMode
-                  ? <><Unlock size={13} /> Editando</>
-                  : <><Lock    size={13} /> Bloqueado</>
-                }
-              </button>
-            )}
-
-            {isEditMode && can.editDashboard && (
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 14px', borderRadius: 12, fontSize: 12, fontWeight: 700,
-                  cursor: 'pointer', border: 'none',
-                  backgroundColor: '#1d4ed8', color: '#fff',
-                  boxShadow: '0 4px 16px rgba(29,78,216,0.35)',
-                  transition: 'background-color 0.15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2563eb'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-              >
-                <Plus size={13} />
-                Nodo
-              </button>
-            )}
-
-            {isEditMode && can.editDashboard && (
-              <div style={{
-                padding: '6px 10px', borderRadius: 10,
-                backgroundColor: '#1e293b', outline: '1px solid #334155',
-                fontSize: 10, fontWeight: 600, color: '#475569', whiteSpace: 'nowrap',
-              }}>
-                Click en arista → toggle flujo
-              </div>
-            )}
-
             <button
               onClick={() => rfInstance?.fitView({ padding: 0.3, duration: 400 })}
               title="Ajustar vista"
@@ -200,14 +141,26 @@ const SchematicCanvas = () => {
                 <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Sincronizando...</span>
               </div>
             )}
+
+            {isEditMode && can.editDashboard && (
+              <div style={{
+                padding: '6px 10px', borderRadius: 10,
+                backgroundColor: '#1e293b', outline: '1px solid #334155',
+                fontSize: 10, fontWeight: 600, color: '#475569', whiteSpace: 'nowrap',
+              }}>
+                Click en arista → toggle flujo
+              </div>
+            )}
           </div>
         </Panel>
 
         {diagramNodes.length === 0 && !loadingData && (
           <Panel position="top-center">
-            <div style={{ marginTop: 80, textAlign: 'center', pointerEvents: 'none' }}>
+            <div style={{ marginTop: 120, textAlign: 'center', pointerEvents: 'none' }}>
               <p style={{ color: '#1e293b', fontSize: 13, fontWeight: 700, margin: 0 }}>
-                {isEditMode ? 'Hacé clic en "+ Nodo" para comenzar el esquema' : 'No hay nodos configurados'}
+                {isEditMode
+                  ? 'Usá "+ Nodo" en la barra superior para comenzar el esquema'
+                  : 'No hay nodos configurados'}
               </p>
             </div>
           </Panel>
@@ -233,12 +186,15 @@ const SchematicCanvas = () => {
       `}</style>
     </div>
   );
-};
+});
 
-const SchematicView = () => (
+SchematicCanvas.displayName = 'SchematicCanvas';
+
+const SchematicView = forwardRef((props, ref) => (
   <ReactFlowProvider>
-    <SchematicCanvas />
+    <SchematicCanvas ref={ref} {...props} />
   </ReactFlowProvider>
-);
+));
 
+SchematicView.displayName = 'SchematicView';
 export default SchematicView;
