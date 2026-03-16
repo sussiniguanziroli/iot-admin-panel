@@ -8,6 +8,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { ThemeProvider } from './shared/context/ThemeContext';
 import EmailVerificationGuard from './shared/components/EmailVerificationGuard';
+import PWAInstallBanner from './shared/components/ui/PWAInstallBanner';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <MqttProvider>
             <DashboardProvider>
               <AppRouter />
+              <PWAInstallBanner />
               <ToastContainer
                 position="bottom-right"
                 autoClose={3000}

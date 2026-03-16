@@ -1,24 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowLeft, Loader2, Chrome } from 'lucide-react'; // Removed 'User' icon
+import { Mail, Lock, ArrowLeft, Loader2, Chrome, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, loginWithGoogle, resetPassword } = useAuth(); // Removed 'signup'
-  
-  const [view, setView] = useState('login'); 
+  const { login, loginWithGoogle, resetPassword } = useAuth();
+
+  const [view, setView] = useState('login');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+  const [resetSent, setResetSent] = useState(false);
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
-
-  const handleBack = () => {
-    navigate('/');
-  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -33,7 +30,7 @@ const Login = () => {
       navigate('/app/dashboard');
     } catch (err) {
       console.error(err);
-      setError('Google sign-in failed. Check console.');
+      setError('Google sign-in failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -43,80 +40,181 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setResetSent(false);
 
     try {
       if (view === 'login') {
         await login(formData.email, formData.password);
         navigate('/app/dashboard');
-        
-      } else if (view === 'forgot') {
+      } else {
         await resetPassword(formData.email);
-        alert('Password reset email sent!');
-        setView('login');
+        setResetSent(true);
       }
     } catch (err) {
       console.error(err.code);
-      setError(err.code === 'auth/invalid-credential' ? 'Invalid email or password.' : err.message);
+      setError(err.code === 'auth/invalid-credential' ? 'Email o contraseña incorrectos.' : err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="px-8 pt-8 pb-6">
-          <button onClick={handleBack} className="flex items-center text-sm text-slate-500 hover:text-slate-800 transition-colors mb-6">
-            <ArrowLeft size={16} className="mr-1" /> Back to Home
-          </button>
+  const handleSwitchView = (newView) => {
+    setView(newView);
+    setError('');
+    setResetSent(false);
+  };
 
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-slate-900">
-              {view === 'login' ? 'Welcome Back' : 'Reset Password'}
-            </h2>
-            <p className="text-slate-500 mt-2">
-              {view === 'login' ? 'Authorized personnel only.' : 'Enter your email to recover access.'}
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+
+      <header className="h-14 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 shadow-sm shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-sm">F</div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold tracking-widest text-slate-800 dark:text-white leading-none">FORTUNATO</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider leading-none mt-0.5">Industrial IoT SCADA</span>
+          </div>
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Volver
+        </button>
+      </header>
+
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              {view === 'login' ? 'Bienvenido' : 'Recuperar contraseña'}
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
+              {view === 'login' ? 'Solo personal autorizado.' : 'Te enviamos un link de recuperación.'}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
-              <input type="email" name="email" placeholder="Email Address" value={formData.email} onChange={handleChange} className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" required />
-            </div>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-6">
 
-            {view === 'login' && (
-                <div className="relative">
-                <Lock className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
-                <input type="password" name="password" placeholder="Password" value={formData.password} onChange={handleChange} className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" required />
+              {view === 'login' && (
+                <>
+                  <button
+                    onClick={handleGoogleLogin}
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-3 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-5"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      <Chrome size={20} className="text-slate-700 dark:text-slate-300" />
+                    )}
+                    Continuar con Google
+                  </button>
+
+                  <div className="relative flex items-center justify-center mb-5">
+                    <div className="border-t border-slate-200 dark:border-slate-700 w-full"></div>
+                    <span className="absolute bg-white dark:bg-slate-800 px-4 text-xs text-slate-400 font-medium">O</span>
+                  </div>
+                </>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+
+                <div>
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="nombre@empresa.com"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="w-full pl-9 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white placeholder:text-slate-400"
+                      required
+                    />
+                  </div>
                 </div>
-            )}
 
-            {error && <div className="text-red-500 text-sm text-center bg-red-50 py-2 rounded">{error}</div>}
+                {view === 'login' && (
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">
+                      Contraseña
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input
+                        type="password"
+                        name="password"
+                        placeholder="••••••••"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="w-full pl-9 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
 
-            <button type="submit" disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center">
-              {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : (view === 'login' ? 'Sign In' : 'Send Reset Link')}
-            </button>
-          </form>
+                {error && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3">
+                    <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+                  </div>
+                )}
 
-          {view === 'login' && (
-            <div className="mt-6">
-                <div className="relative flex justify-center text-sm mb-4">
-                  <span className="px-2 bg-white text-slate-500">Or continue with</span>
-                </div>
-                <button onClick={handleGoogleLogin} type="button" className="w-full flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium py-3 rounded-lg transition-colors">
-                    <Chrome size={20} className="text-slate-900" /> Google
+                {resetSent && (
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3">
+                    <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                      Link de recuperación enviado. Revisá tu casilla.
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                >
+                  {isLoading ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : view === 'login' ? (
+                    <>
+                      Iniciar sesión
+                      <ArrowRight size={18} />
+                    </>
+                  ) : (
+                    'Enviar link de recuperación'
+                  )}
                 </button>
-            </div>
-          )}
-        </div>
+              </form>
 
-        <div className="bg-slate-50 px-8 py-4 border-t border-slate-100 text-center">
-          {view === 'login' ? (
-            <button onClick={() => setView('forgot')} className="text-blue-600 hover:underline text-sm font-medium">Forgot password?</button>
-          ) : (
-            <button onClick={() => setView('login')} className="text-blue-600 hover:underline text-sm font-medium">Back to Sign In</button>
-          )}
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 text-center">
+              {view === 'login' ? (
+                <button
+                  onClick={() => handleSwitchView('forgot')}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSwitchView('login')}
+                  className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors mx-auto"
+                >
+                  <ArrowLeft size={14} />
+                  Volver al login
+                </button>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

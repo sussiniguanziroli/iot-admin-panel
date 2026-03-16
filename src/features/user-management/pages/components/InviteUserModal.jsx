@@ -9,7 +9,7 @@ import { db } from '../../../../firebase/config';
 import Swal from 'sweetalert2';
 
 const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
-  const { userProfile } = useAuth();
+  const { userProfile, user } = useAuth();
   const { isSuperAdmin } = usePermissions();
 
   const [step, setStep] = useState(1);
@@ -69,7 +69,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       const link = await createInvitation(
-        userProfile,
+        user,
         formData.tenantId,
         formData.role,
         formData.email
@@ -111,7 +111,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
 
       const result = await sendInvitationEmail(
         formData.email,
-        userProfile.name,
+        user.displayName || userProfile?.name || user.email,
         tenantName,
         formData.role,
         linkToSend
@@ -149,6 +149,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   const handleClose = () => {
+    const wasOnStep2 = step === 2;
     setStep(1);
     setFormData({
       email: '',
@@ -160,7 +161,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
     setSendEmailAutomatically(false);
     setEmailSent(false);
     onClose();
-    if (step === 2) onSuccess();
+    if (wasOnStep2) onSuccess();
   };
 
   const getTenantDisplayName = (tenantId) => {
@@ -284,7 +285,7 @@ const InviteUserModal = ({ isOpen, onClose, onSuccess }) => {
                   >
                     <option value="viewer">Viewer - Solo lectura</option>
                     <option value="operator">Operator - Monitoreo y visualización</option>
-                    <option value="admin">Admin - Control total</option>
+                    {isSuperAdmin && <option value="admin">Admin - Control total</option>}
                     {isSuperAdmin && <option value="super_admin">Super Admin - Control de plataforma</option>}
                   </select>
                 </div>
