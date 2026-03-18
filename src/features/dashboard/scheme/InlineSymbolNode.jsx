@@ -1,4 +1,4 @@
-import React, { memo, useState, useCallback } from 'react';
+import React, { memo, useState, useCallback, useRef, useLayoutEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import { X, Settings } from 'lucide-react';
@@ -9,23 +9,44 @@ import EditSymbolModal from './EditSymbolModal';
 
 const WHITE = '#e2e8f0';
 
-const SymbolScaleWrapper = memo(({ SymbolComponent, color }) => (
-  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-    <style>{`
-      .sym-scale > svg {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: unset !important;
-        overflow: visible;
-      }
-    `}</style>
-    <div className="sym-scale" style={{ width: '100%', height: '100%' }}>
+// ── SymbolScaleWrapper ────────────────────────────────────────────────────────
+// No inyecta <style> — manipula el DOM directamente con useLayoutEffect.
+// Esto evita bloqueos CSP en producción (Netlify, Vercel, etc.)
+const SymbolScaleWrapper = memo(({ SymbolComponent, color }) => {
+  const ref = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    const svg = ref.current.querySelector('svg');
+    if (!svg) return;
+    // Forzar tamaño al 100% del contenedor — sin CSS class names
+    svg.setAttribute('width',  '100%');
+    svg.setAttribute('height', '100%');
+    svg.style.width     = '100%';
+    svg.style.height    = '100%';
+    svg.style.maxWidth  = 'none';
+    svg.style.maxHeight = 'none';
+    svg.style.display   = 'block';
+  }); // sin deps — re-corre si cambia el símbolo
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        width:          '100%',
+        height:         '100%',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        overflow:       'visible',
+      }}
+    >
       <SymbolComponent color={color} />
     </div>
-  </div>
-));
+  );
+});
 
-// Offset en px entre el borde del nodo y la etiqueta
+// ── Label placement ───────────────────────────────────────────────────────────
 const LABEL_GAP = 6;
 
 const labelStyle = (pos) => {
@@ -33,7 +54,7 @@ const labelStyle = (pos) => {
     position:      'absolute',
     fontSize:       9,
     fontWeight:     700,
-    fontFamily:    '"SFMono-Regular", Consolas, monospace',
+    fontFamily:    '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
     color:         '#94a3b8',
     whiteSpace:    'nowrap',
     letterSpacing: '0.04em',
@@ -44,39 +65,30 @@ const labelStyle = (pos) => {
   };
   switch (pos) {
     case 'top':
-      return { ...base, bottom: `calc(100% + ${LABEL_GAP}px)`, left: '50%', transform: 'translateX(-50%)' };
+      return { ...base, bottom: `calc(100% + ${LABEL_GAP}px)`, left: '50%',  transform: 'translateX(-50%)' };
     case 'bottom':
-      return { ...base, top:    `calc(100% + ${LABEL_GAP}px)`, left: '50%', transform: 'translateX(-50%)' };
+      return { ...base, top:    `calc(100% + ${LABEL_GAP}px)`, left: '50%',  transform: 'translateX(-50%)' };
     case 'left':
-      return { ...base, right:  `calc(100% + ${LABEL_GAP}px)`, top:  '50%', transform: 'translateY(-50%)', textAlign: 'right' };
+      return { ...base, right:  `calc(100% + ${LABEL_GAP}px)`, top:  '50%',  transform: 'translateY(-50%)', textAlign: 'right' };
     case 'right':
-      return { ...base, left:   `calc(100% + ${LABEL_GAP}px)`, top:  '50%', transform: 'translateY(-50%)' };
+      return { ...base, left:   `calc(100% + ${LABEL_GAP}px)`, top:  '50%',  transform: 'translateY(-50%)' };
     default:
-      return { ...base, top:    `calc(100% + ${LABEL_GAP}px)`, left: '50%', transform: 'translateX(-50%)' };
+      return { ...base, top:    `calc(100% + ${LABEL_GAP}px)`, left: '50%',  transform: 'translateX(-50%)' };
   }
 };
 
 const BTN = {
   display:      'flex', alignItems: 'center', justifyContent: 'center',
-  cursor:       'pointer',
-  zIndex:        9999,
-  padding:        0,
-  position:     'absolute',
-  width:         26, height: 26,
-  borderRadius: '50%',
-  boxShadow:    '0 2px 8px rgba(0,0,0,0.6)',
-  pointerEvents:'all',
+  cursor:       'pointer', zIndex: 9999, padding: 0,
+  position:     'absolute', width: 26, height: 26,
+  borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+  pointerEvents: 'all',
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 const InlineSymbolNode = memo(({ data, selected, id }) => {
-  const {
-    isEditMode,
-    diagramEdges,
-    updateDiagramNode,
-    removeDiagramNode,
-  } = useDashboard();
+  const { isEditMode, diagramEdges, updateDiagramNode, removeDiagramNode } = useDashboard();
   const { can } = usePermissions();
-
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const symbolType = data.symbolType ?? 'fuse';
@@ -126,11 +138,10 @@ const InlineSymbolNode = memo(({ data, selected, id }) => {
         alignItems:     'center',
         justifyContent: 'center',
         userSelect:     'none',
-        // overflow visible para que label y botones no se corten
         overflow:       'visible',
       }}>
 
-        {/* Resizer */}
+        {/* ── Resizer ─────────────────────────────────────────────── */}
         {isEditMode && can.editDashboard && (
           <NodeResizer
             isVisible={true}
@@ -146,7 +157,7 @@ const InlineSymbolNode = memo(({ data, selected, id }) => {
           />
         )}
 
-        {/* Handles */}
+        {/* ── Handles ─────────────────────────────────────────────── */}
         {isVertical ? (
           <>
             <Handle id="top"    type="target" position={Position.Top}    style={hStyle('top')} />
@@ -159,7 +170,7 @@ const InlineSymbolNode = memo(({ data, selected, id }) => {
           </>
         )}
 
-        {/* Símbolo escalado */}
+        {/* ── Símbolo escalado ────────────────────────────────────── */}
         <div style={{
           position:       'absolute',
           inset:           isEditMode ? 10 : 0,
@@ -177,46 +188,34 @@ const InlineSymbolNode = memo(({ data, selected, id }) => {
           <SymbolScaleWrapper SymbolComponent={SymbolComponent} color={WHITE} />
         </div>
 
-        {/* Label en el costado elegido */}
-        {label && (
-          <span style={labelStyle(labelPos)}>
-            {label}
-          </span>
-        )}
+        {/* ── Label ───────────────────────────────────────────────── */}
+        {label && <span style={labelStyle(labelPos)}>{label}</span>}
 
-        {/* Botones de edición */}
+        {/* ── Controles de edición ────────────────────────────────── */}
         {isEditMode && can.editDashboard && (
           <>
-            {/* Engranaje — editar */}
             <button
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); setIsEditModalOpen(true); }}
               title="Editar símbolo"
               style={{
-                ...BTN,
-                top: -14, left: -14,
-                backgroundColor: '#0f172a',
-                color:           '#94a3b8',
-                border:          '2px solid #3b82f6',
-                transition:      'background-color 0.15s',
+                ...BTN, top: -14, left: -14,
+                backgroundColor: '#0f172a', color: '#94a3b8',
+                border: '2px solid #3b82f6', transition: 'background-color 0.15s',
               }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#1e293b'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#0f172a'; }}
             >
               <Settings size={12} />
             </button>
-
-            {/* Eliminar */}
             <button
               onMouseDown={(e) => e.stopPropagation()}
               onClick={remove}
               title="Eliminar símbolo"
               style={{
-                ...BTN,
-                top: -14, right: -14,
-                backgroundColor: '#ef4444',
-                color:           '#fff',
-                border:          '2px solid #020617',
+                ...BTN, top: -14, right: -14,
+                backgroundColor: '#ef4444', color: '#fff',
+                border: '2px solid #020617',
               }}
             >
               <X size={11} strokeWidth={3} />

@@ -13,11 +13,12 @@ import MqttAuditor from '../../mqtt-auditor/MqttAuditor';
 import {
   Building, ChevronDown, Loader2, MapPin, AlertCircle,
   Lock, Unlock, Activity, Settings, Plus, Wifi, WifiOff, Signal,
-  Layers,} from 'lucide-react';
+  Layers, GitMerge,
+} from 'lucide-react';
 
 const Dashboard = () => {
-  const navigate    = useNavigate();
-  const schemaRef   = useRef(null);
+  const navigate  = useNavigate();
+  const schemaRef = useRef(null);
 
   const {
     isEditMode, toggleEditMode,
@@ -27,11 +28,11 @@ const Dashboard = () => {
   } = useDashboard();
 
   const { can, isSuperAdmin } = usePermissions();
-  const { connectionStatus, activeConfig } = useMqtt();
+  const { connectionStatus }  = useMqtt();
   const isDark = useIsDark();
 
-  const [availableTenants,   setAvailableTenants]   = useState([]);
-  const [isMqttAuditorOpen,  setIsMqttAuditorOpen]  = useState(false);
+  const [availableTenants,  setAvailableTenants]  = useState([]);
+  const [isMqttAuditorOpen, setIsMqttAuditorOpen] = useState(false);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -40,27 +41,14 @@ const Dashboard = () => {
       .catch(e => console.error('Error fetching tenants:', e));
   }, [isSuperAdmin]);
 
-  const mqttMap = {
-    connected:    { color: '#10b981', label: 'Conectado',    icon: Wifi    },
-    connecting:   { color: '#f59e0b', label: 'Conectando…',  icon: Signal  },
-    disconnected: { color: '#64748b', label: 'Desconectado', icon: WifiOff },
-    error:        { color: '#ef4444', label: 'Error',        icon: WifiOff },
-  };
-  const mqttSt   = mqttMap[connectionStatus] || mqttMap.disconnected;
-  const MqttIcon = mqttSt.icon;
-
   const t = isDark ? {
     bg: '#020617', barBg: 'rgba(15,23,42,0.85)', barBorder: 'rgba(30,41,59,0.9)',
-    inputBg: '#1e293b', inputBorder: '#334155',
     textPrimary: '#f1f5f9', textMuted: '#64748b', textSub: '#475569',
-    pillBg: '#1e293b', pillBorder: '#334155',
     emptyIcon: '#1e293b', emptyIconFg: '#334155',
     divider: 'rgba(255,255,255,0.07)',
   } : {
     bg: '#f1f5f9', barBg: 'rgba(255,255,255,0.9)', barBorder: 'rgba(226,232,240,0.9)',
-    inputBg: '#f8fafc', inputBorder: '#cbd5e1',
     textPrimary: '#0f172a', textMuted: '#64748b', textSub: '#94a3b8',
-    pillBg: '#f1f5f9', pillBorder: '#e2e8f0',
     emptyIcon: '#e2e8f0', emptyIconFg: '#cbd5e1',
     divider: 'rgba(0,0,0,0.08)',
   };
@@ -87,7 +75,7 @@ const Dashboard = () => {
     }}>
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
 
-        {/* ── FLOATING BAR ─────────────────────────────────────── */}
+        {/* ── FLOATING BAR ───────────────────────────────────────── */}
         {(locations.length > 0 || isSuperAdmin) && (
           <div style={{
             position: 'absolute',
@@ -113,7 +101,11 @@ const Dashboard = () => {
             {isSuperAdmin && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 22, height: 22, backgroundColor: '#4f46e5', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{
+                    width: 22, height: 22, backgroundColor: '#4f46e5',
+                    borderRadius: 6, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', flexShrink: 0,
+                  }}>
                     <Building size={12} style={{ color: '#fff' }} />
                   </div>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -136,35 +128,37 @@ const Dashboard = () => {
 
             {/* Location selector */}
             {locations.length > 0 && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <MapPin size={13} style={{ color: t.textSub, flexShrink: 0 }} />
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <select
-                      value={activeLocation?.id || ''}
-                      onChange={(e) => switchLocation(e.target.value)}
-                      disabled={!can.viewLocations}
-                      style={{ ...selectStyle, opacity: can.viewLocations ? 1 : 0.5, cursor: can.viewLocations ? 'pointer' : 'not-allowed' }}
-                    >
-                      {locations.map(loc => (
-                        <option key={loc.id} value={loc.id}>{loc.name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={11} style={{ position: 'absolute', right: 2, color: t.textMuted, pointerEvents: 'none' }} />
-                  </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <MapPin size={13} style={{ color: t.textSub, flexShrink: 0 }} />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <select
+                    value={activeLocation?.id || ''}
+                    onChange={(e) => switchLocation(e.target.value)}
+                    disabled={!can.viewLocations}
+                    style={{
+                      ...selectStyle,
+                      opacity: can.viewLocations ? 1 : 0.5,
+                      cursor:  can.viewLocations ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    {locations.map(loc => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={11} style={{ position: 'absolute', right: 2, color: t.textMuted, pointerEvents: 'none' }} />
                 </div>
-                
-              </>
+              </div>
             )}
 
-            
-
+            {/* Sin broker */}
             {!activeLocation?.mqtt_config?.host && locations.length > 0 && (
               <>
                 <Divider />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <AlertCircle size={12} style={{ color: '#f59e0b' }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', whiteSpace: 'nowrap' }}>Sin broker</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', whiteSpace: 'nowrap' }}>
+                    Sin broker
+                  </span>
                 </div>
               </>
             )}
@@ -175,89 +169,131 @@ const Dashboard = () => {
             {/* Loading */}
             {loadingData && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Loader2 size={12} style={{ color: isDark ? '#818cf8' : '#6366f1', animation: 'spin 1s linear infinite' }} />
-                <span style={{ fontSize: 11, color: isDark ? '#818cf8' : '#6366f1', fontWeight: 600 }}>Sync…</span>
+                <Loader2 size={12} style={{
+                  color: isDark ? '#818cf8' : '#6366f1',
+                  animation: 'spin 1s linear infinite',
+                }} />
+                <span style={{ fontSize: 11, color: isDark ? '#818cf8' : '#6366f1', fontWeight: 600 }}>
+                  Sync…
+                </span>
               </div>
             )}
 
-            {/* Read-only badge for viewer/operator */}
+            {/* Read-only badge */}
             {!can.editDashboard && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '3px 8px', borderRadius: 6,
+                backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+              }}>
                 <Lock size={10} style={{ color: t.textMuted }} />
-                <span style={{ fontSize: 10, color: t.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>Solo lectura</span>
+                <span style={{ fontSize: 10, color: t.textMuted, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  Solo lectura
+                </span>
               </div>
             )}
 
-            {/* Admin controls */}
-            {/* Admin controls */}
-{can.editDashboard && (
-  <>
-    <Divider />
+            {/* ── Admin controls ─────────────────────────────────── */}
+            {can.editDashboard && (
+              <>
+                <Divider />
 
-    {/* Edit mode toggle */}
-    <button
-      onClick={toggleEditMode}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 5,
-        padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-        border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-        transition: 'all 0.15s',
-        backgroundColor: isEditMode
-          ? (isDark ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.12)')
-          : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'),
-        color: isEditMode ? '#f97316' : t.textMuted,
-        outline: isEditMode ? '1px solid rgba(249,115,22,0.4)' : `1px solid ${t.divider}`,
-      }}
-    >
-      {isEditMode ? <Unlock size={12} /> : <Lock size={12} />}
-      {isEditMode ? 'Editando' : 'Bloqueado'}
-    </button>
+                {/* Toggle edit mode */}
+                <button
+                  onClick={toggleEditMode}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '5px 10px', borderRadius: 8,
+                    fontSize: 11, fontWeight: 700,
+                    border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                    transition: 'all 0.15s',
+                    backgroundColor: isEditMode
+                      ? (isDark ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.12)')
+                      : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'),
+                    color:   isEditMode ? '#f97316' : t.textMuted,
+                    outline: isEditMode
+                      ? '1px solid rgba(249,115,22,0.4)'
+                      : `1px solid ${t.divider}`,
+                  }}
+                >
+                  {isEditMode ? <Unlock size={12} /> : <Lock size={12} />}
+                  {isEditMode ? 'Editando' : 'Bloqueado'}
+                </button>
 
-    {/* Botones de edición — solo visibles en edit mode */}
-    {isEditMode && (
-      <>
-        {/* + Nodo */}
-        <button
-          onClick={() => schemaRef.current?.openAddModal()}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-            border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-            backgroundColor: '#1d4ed8', color: '#fff',
-            boxShadow: '0 2px 8px rgba(29,78,216,0.35)',
-            transition: 'background-color 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2563eb'}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-        >
-          <Plus size={13} />
-          Nodo
-        </button>
+                {/* Botones visibles solo en edit mode */}
+                {isEditMode && (
+                  <>
+                    {/* + Nodo */}
+                    <button
+                      onClick={() => schemaRef.current?.openAddModal()}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '5px 12px', borderRadius: 8,
+                        fontSize: 11, fontWeight: 700,
+                        border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                        backgroundColor: '#1d4ed8', color: '#fff',
+                        boxShadow: '0 2px 8px rgba(29,78,216,0.35)',
+                        transition: 'background-color 0.15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2563eb'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+                    >
+                      <Plus size={13} />
+                      Nodo
+                    </button>
 
-        {/* + Símbolo */}
-        <button
-          onClick={() => schemaRef.current?.openSymbolModal()}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-            border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-            backgroundColor: isDark ? 'rgba(14,79,130,0.7)' : '#0c3d6e',
-            color: '#7dd3fc',
-            outline: '1px solid rgba(30,77,120,0.8)',
-            transition: 'background-color 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#0f4f8c'}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(14,79,130,0.7)' : '#0c3d6e'}
-        >
-          <Layers size={13} />
-          Símbolo
-        </button>
-      </>
-    )}
-  </>
-)}
+                    {/* + Símbolo */}
+                    <button
+                      onClick={() => schemaRef.current?.openSymbolModal()}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '5px 12px', borderRadius: 8,
+                        fontSize: 11, fontWeight: 700,
+                        border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                        backgroundColor: isDark ? 'rgba(14,79,130,0.7)' : '#0c3d6e',
+                        color: '#7dd3fc',
+                        outline: '1px solid rgba(30,77,120,0.8)',
+                        transition: 'background-color 0.15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#0f4f8c'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(14,79,130,0.7)' : '#0c3d6e'}
+                    >
+                      <Layers size={13} />
+                      Símbolo
+                    </button>
 
-            {/* Super admin actions */}
+                    {/* + Empalme — llama via ref para usar screenToFlowPosition */}
+                    <button
+                      onClick={() => schemaRef.current?.addJunctionAtCenter()}
+                      title="Agregar punto de empalme / derivación"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '5px 12px', borderRadius: 8,
+                        fontSize: 11, fontWeight: 700,
+                        border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                        backgroundColor: isDark ? 'rgba(30,41,59,0.9)' : '#1e293b',
+                        color: '#94a3b8',
+                        outline: '1px solid #334155',
+                        transition: 'background-color 0.15s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.backgroundColor = '#334155';
+                        e.currentTarget.style.color = '#e2e8f0';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = isDark ? 'rgba(30,41,59,0.9)' : '#1e293b';
+                        e.currentTarget.style.color = '#94a3b8';
+                      }}
+                    >
+                      <GitMerge size={13} />
+                      Empalme
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* ── Super admin actions ────────────────────────────── */}
             {isSuperAdmin && (
               <>
                 <Divider />
@@ -266,9 +302,13 @@ const Dashboard = () => {
                   disabled={!viewedTenantId}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                    border: 'none', cursor: viewedTenantId ? 'pointer' : 'not-allowed',
-                    backgroundColor: viewedTenantId ? '#4f46e5' : (isDark ? 'rgba(255,255,255,0.04)' : '#e2e8f0'),
+                    padding: '5px 10px', borderRadius: 8,
+                    fontSize: 11, fontWeight: 700,
+                    border: 'none',
+                    cursor: viewedTenantId ? 'pointer' : 'not-allowed',
+                    backgroundColor: viewedTenantId
+                      ? '#4f46e5'
+                      : (isDark ? 'rgba(255,255,255,0.04)' : '#e2e8f0'),
                     color: viewedTenantId ? '#fff' : t.textMuted,
                     whiteSpace: 'nowrap',
                   }}
@@ -280,7 +320,8 @@ const Dashboard = () => {
                   onClick={() => setIsMqttAuditorOpen(true)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                    padding: '5px 10px', borderRadius: 8,
+                    fontSize: 11, fontWeight: 700,
                     border: 'none', cursor: 'pointer',
                     backgroundColor: '#0e7490', color: '#fff',
                     whiteSpace: 'nowrap',
@@ -294,7 +335,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* ── EMPTY STATE ──────────────────────────────────────── */}
+        {/* ── EMPTY STATE ───────────────────────────────────────── */}
         {locations.length === 0 && !loadingData && (
           <div style={{
             position: 'absolute', inset: 0,
@@ -302,10 +343,16 @@ const Dashboard = () => {
             alignItems: 'center', justifyContent: 'center',
             gap: 16, textAlign: 'center', padding: 32,
           }}>
-            <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: t.emptyIcon, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: '50%',
+              backgroundColor: t.emptyIcon,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
               <MapPin size={32} style={{ color: t.emptyIconFg }} />
             </div>
-            <h2 style={{ color: t.textMuted, fontSize: 20, fontWeight: 700, margin: 0 }}>Sin ubicaciones</h2>
+            <h2 style={{ color: t.textMuted, fontSize: 20, fontWeight: 700, margin: 0 }}>
+              Sin ubicaciones
+            </h2>
             <p style={{ color: t.textSub, fontSize: 14, margin: 0, maxWidth: 360 }}>
               {isSuperAdmin
                 ? 'Este tenant no tiene ubicaciones. Configuralo desde el panel de administración.'
@@ -314,7 +361,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* ── LOADING ──────────────────────────────────────────── */}
+        {/* ── LOADING ───────────────────────────────────────────── */}
         {loadingData && locations.length === 0 && (
           <div style={{
             position: 'absolute', inset: 0,
@@ -326,12 +373,15 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* ── CANVAS ───────────────────────────────────────────── */}
+        {/* ── CANVAS ────────────────────────────────────────────── */}
         {activeLocation && <SchematicView ref={schemaRef} />}
       </div>
 
       {isSuperAdmin && (
-        <MqttAuditor isOpen={isMqttAuditorOpen} onClose={() => setIsMqttAuditorOpen(false)} />
+        <MqttAuditor
+          isOpen={isMqttAuditorOpen}
+          onClose={() => setIsMqttAuditorOpen(false)}
+        />
       )}
 
       <style>{`

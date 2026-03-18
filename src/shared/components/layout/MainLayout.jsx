@@ -78,14 +78,14 @@ const MainLayout = () => {
   };
 
   const menuItems = [
-    { path: '/app/super-admin-home', label: 'Home',          icon: <LayoutDashboard size={20} />, show: isSuperAdmin },
-    { path: '/app/tenants',          label: 'Organizations', icon: <Building2 size={20} />,       show: isSuperAdmin },
-    { path: '/app/home',             label: 'Home',          icon: <LayoutDashboard size={20} />, show: !isSuperAdmin && (isAdmin || can.viewDashboard) },
-    { path: '/app/dashboard',        label: 'Dashboard',     icon: <LayoutDashboard size={20} />, show: can.viewDashboard },
-    { path: '/app/analytics',        label: 'Analytics',     icon: <BarChart2 size={20} />,       show: can.viewAnalytics },
-    { path: '/app/my-company',       label: 'My Company',    icon: <Building2 size={20} />,       show: isAdmin && !isSuperAdmin },
-    { path: '/app/users',            label: 'Users',         icon: <Users size={20} />,           show: can.manageUsers },
-    { path: '/app/audit-logs',       label: 'Audit Logs',    icon: <Shield size={20} />,          show: can.viewAuditLogs },
+    { path: '/app/super-admin-home', label: 'Inicio',          icon: <LayoutDashboard size={20} />, show: isSuperAdmin },
+    { path: '/app/tenants',          label: 'Organizaciones', icon: <Building2 size={20} />,       show: isSuperAdmin },
+    { path: '/app/home',             label: 'Inicio',          icon: <LayoutDashboard size={20} />, show: !isSuperAdmin && (isAdmin || can.viewDashboard) },
+    { path: '/app/dashboard',        label: 'Panel de Control Unifilar',     icon: <LayoutDashboard size={20} />, show: can.viewDashboard },
+    { path: '/app/analytics',        label: 'Analíticas',     icon: <BarChart2 size={20} />,       show: can.viewAnalytics },
+    { path: '/app/my-company',       label: 'Mi Empresa',    icon: <Building2 size={20} />,       show: isAdmin && !isSuperAdmin },
+    { path: '/app/users',            label: 'Usuarios',         icon: <Users size={20} />,           show: can.manageUsers },
+    { path: '/app/audit-logs',       label: 'Auditoria de Eventos',    icon: <Shield size={20} />,          show: can.viewAuditLogs },
   ];
 
   const handleLogout = () => { disconnect(); logout(); navigate('/login'); };
@@ -93,8 +93,8 @@ const MainLayout = () => {
   const getPageTitle = () => {
     const cur = menuItems.find(i => location.pathname.includes(i.path));
     if (cur) return cur.label;
-    if (location.pathname.includes('profile')) return 'My Profile';
-    if (location.pathname.includes('tenants/')) return 'Tenant Details';
+    if (location.pathname.includes('profile')) return 'Mi Perfil';
+    if (location.pathname.includes('tenants/')) return 'Detalles de Organización';
     return 'Dashboard';
   };
 

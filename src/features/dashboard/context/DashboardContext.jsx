@@ -66,7 +66,12 @@ export const DashboardProvider = ({ children }) => {
           cur.displayUnit  !== newDisplayUnit  ||
           cur.isOnline     !== newIsOnline
         ) {
-          next[machineId] = { ...cur, displayValue: newDisplayValue, displayUnit: newDisplayUnit, isOnline: newIsOnline };
+          next[machineId] = {
+            ...cur,
+            displayValue: newDisplayValue,
+            displayUnit:  newDisplayUnit,
+            isOnline:     newIsOnline,
+          };
           changed = true;
 
           if (powerWidgetId === id && deviceType === 'recloser') {
@@ -76,7 +81,14 @@ export const DashboardProvider = ({ children }) => {
               if (outgoing.length === 0) return prevEdges;
               const updatedEdges = prevEdges.map(e => {
                 if (e.source !== machineId) return e;
-                return { ...e, data: { ...e.data, hasFlow: recloserOnline, flowColor: recloserOnline ? '#22c55e' : '#334155' } };
+                return {
+                  ...e,
+                  data: {
+                    ...e.data,
+                    hasFlow:   recloserOnline,
+                    flowColor: recloserOnline ? '#22c55e' : '#334155',
+                  },
+                };
               });
               saveDiagramRef.current(diagramNodesRef.current, updatedEdges);
               return updatedEdges;
@@ -97,13 +109,13 @@ export const DashboardProvider = ({ children }) => {
   };
 
   // ── Chart helpers ─────────────────────────────────────────────────────────
-  const getChartData   = useCallback((wId) => chartData[wId] || [], [chartData]);
+  const getChartData = useCallback((wId) => chartData[wId] || [], [chartData]);
 
   const clearChartData = useCallback((wId) => {
     setChartData(prev => { const u = { ...prev }; delete u[wId]; return u; });
   }, []);
 
-  const addChartPoint  = useCallback((wId, pt) => {
+  const addChartPoint = useCallback((wId, pt) => {
     setChartData(prev => {
       const ex  = prev[wId] || [];
       const upd = [...ex, pt];
@@ -119,7 +131,7 @@ export const DashboardProvider = ({ children }) => {
 
   useEffect(() => {
     if (!viewedTenantId) return;
-    const fetch = async () => {
+    const fetchLocs = async () => {
       setLoadingData(true);
       try {
         const snap    = await getDocs(collection(db, 'tenants', viewedTenantId, 'locations'));
@@ -130,7 +142,7 @@ export const DashboardProvider = ({ children }) => {
       } catch (e) { console.error('Error loading locations:', e); }
       finally     { setLoadingData(false); }
     };
-    fetch();
+    fetchLocs();
   }, [viewedTenantId]);
 
   useEffect(() => {
@@ -139,6 +151,7 @@ export const DashboardProvider = ({ children }) => {
       disconnect(); clearWidgetData();
       return;
     }
+
     setLoadingData(true);
     if (activeLocation.mqtt_config) connectToBroker(activeLocation.mqtt_config);
     else disconnect();
@@ -154,7 +167,10 @@ export const DashboardProvider = ({ children }) => {
         if (machineList.length === 0) {
           const def = { id: `m-${Date.now()}`, name: 'General' };
           machineList = [def];
-          await setDoc(docRef, { layout: { machines: machineList, widgets: [] }, updatedAt: new Date().toISOString() }, { merge: true });
+          await setDoc(docRef, {
+            layout: { machines: machineList, widgets: [] },
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
         }
 
         setMachines(machineList);
@@ -218,7 +234,12 @@ export const DashboardProvider = ({ children }) => {
   const onConnect = useCallback((connection) => {
     setDiagramEdges(prev => {
       const updated = rfAddEdge(
-        { ...connection, type: 'flowEdge', id: `e-${Date.now()}`, data: { hasFlow: false, flowColor: '#22d3ee' } },
+        {
+          ...connection,
+          type: 'flowEdge',
+          id:   `e-${Date.now()}`,
+          data: { hasFlow: false, flowColor: '#22d3ee' },
+        },
         prev
       );
       saveDiagram(diagramNodesRef.current, updated);
@@ -228,7 +249,9 @@ export const DashboardProvider = ({ children }) => {
 
   const updateEdge = useCallback((edgeId, data) => {
     setDiagramEdges(prev => {
-      const updated = prev.map(e => e.id === edgeId ? { ...e, data: { ...e.data, ...data } } : e);
+      const updated = prev.map(e =>
+        e.id === edgeId ? { ...e, data: { ...e.data, ...data } } : e
+      );
       saveDiagram(diagramNodesRef.current, updated);
       return updated;
     });
@@ -278,7 +301,24 @@ export const DashboardProvider = ({ children }) => {
     });
   }, [saveDiagram]);
 
-  // ── removeDiagramNode — elimina por nodeId (no machineId) ─────────────────
+  // ── addJunction — punto de derivación / empalme ───────────────────────────
+  const addJunction = useCallback((x, y) => {
+    const nodeId  = `jct-${Date.now()}`;
+    const newNode = {
+      id:         nodeId,
+      type:      'junctionNode',
+      position:   { x: x ?? 300, y: y ?? 300 },
+      dragHandle: '.jct-drag',   // ← ReactFlow usa este selector para el drag
+      data:       {},
+    };
+    setDiagramNodes(prev => {
+      const updated = [...prev, newNode];
+      saveDiagram(updated, diagramEdgesRef.current);
+      return updated;
+    });
+  }, [saveDiagram]);
+
+  // ── removeDiagramNode — por nodeId ────────────────────────────────────────
   const removeDiagramNode = useCallback((nodeId) => {
     setDiagramNodes(prev => {
       const updatedNodes = prev.filter(n => n.id !== nodeId);
@@ -291,7 +331,7 @@ export const DashboardProvider = ({ children }) => {
     });
   }, [saveDiagram]);
 
-  // removeMachine elimina por machineId (SchemNode lo sigue usando)
+  // ── removeMachine — por machineId (SchemNode) ─────────────────────────────
   const removeMachine = (id) => {
     const nm = machines.filter(m => m.id !== id);
     const nw = widgets.filter(w => w.machineId !== id);
@@ -299,7 +339,6 @@ export const DashboardProvider = ({ children }) => {
     setWidgets(nw);
     setActiveMachineId(nm[0]?.id || null);
     saveLayout(nm, nw);
-    // Elimina también el nodo del diagrama por machineId
     setDiagramNodes(prev => {
       const updatedNodes = prev.filter(n => n.id !== id);
       const updatedEdges = diagramEdgesRef.current.filter(
@@ -311,10 +350,10 @@ export const DashboardProvider = ({ children }) => {
     });
   };
 
-  const updateDiagramNode = useCallback((machineId, data) => {
+  const updateDiagramNode = useCallback((nodeId, data) => {
     setDiagramNodes(prev => {
       const updated = prev.map(n =>
-        n.id === machineId ? { ...n, data: { ...n.data, ...data } } : n
+        n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
       );
       saveDiagram(updated, diagramEdgesRef.current);
       return updated;
@@ -322,7 +361,12 @@ export const DashboardProvider = ({ children }) => {
   }, [saveDiagram]);
 
   // ── Tenant / location switching ───────────────────────────────────────────
-  const switchTenant   = (id) => { setViewedTenantId(id); setActiveLocation(null); clearWidgetData(); };
+  const switchTenant = (id) => {
+    setViewedTenantId(id);
+    setActiveLocation(null);
+    clearWidgetData();
+  };
+
   const switchLocation = (locationId) => {
     const t = locations.find(l => l.id === locationId);
     if (t) { setActiveLocation(t); clearWidgetData(); }
@@ -330,7 +374,7 @@ export const DashboardProvider = ({ children }) => {
 
   // ── Machine CRUD ──────────────────────────────────────────────────────────
   const addMachine = (name, deviceType = 'generic') => {
-    const newId      = `m-${Date.now()}`;
+    const newId       = `m-${Date.now()}`;
     const newMachines = [...machines, { id: newId, name }];
     setMachines(newMachines);
     setActiveMachineId(newId);
@@ -339,16 +383,38 @@ export const DashboardProvider = ({ children }) => {
   };
 
   // ── Widget CRUD ───────────────────────────────────────────────────────────
-  const addWidget    = (w) => { const up = [...widgets, { ...w, id: Date.now().toString(), machineId: activeMachineId }]; setWidgets(up); saveLayout(machines, up); };
-  const updateWidget = (uw) => { const up = widgets.map(w => w.id === uw.id ? uw : w); setWidgets(up); saveLayout(machines, up); };
-  const removeWidget = (id) => { const up = widgets.filter(w => w.id !== id); setWidgets(up); saveLayout(machines, up); };
-  const reorderWidgets = (o, n) => { const up = arrayMove(widgets, o, n); setWidgets(up); saveLayout(machines, up); };
+  const addWidget = (w) => {
+    const up = [...widgets, { ...w, id: Date.now().toString(), machineId: activeMachineId }];
+    setWidgets(up);
+    saveLayout(machines, up);
+  };
+
+  const updateWidget = (uw) => {
+    const up = widgets.map(w => w.id === uw.id ? uw : w);
+    setWidgets(up);
+    saveLayout(machines, up);
+  };
+
+  const removeWidget = (id) => {
+    const up = widgets.filter(w => w.id !== id);
+    setWidgets(up);
+    saveLayout(machines, up);
+  };
+
+  const reorderWidgets = (o, n) => {
+    const up = arrayMove(widgets, o, n);
+    setWidgets(up);
+    saveLayout(machines, up);
+  };
 
   // ── Profile import ────────────────────────────────────────────────────────
   const loadProfile = (data) => {
     if (data.machines) setMachines(data.machines);
     if (data.widgets)  setWidgets(data.widgets);
-    if (data.diagram)  { setDiagramNodes(data.diagram.nodes || []); setDiagramEdges(data.diagram.edges || []); }
+    if (data.diagram)  {
+      setDiagramNodes(data.diagram.nodes || []);
+      setDiagramEdges(data.diagram.edges || []);
+    }
     if (data.mqtt_config && activeLocation) {
       const docRef = doc(db, 'tenants', viewedTenantId, 'locations', activeLocation.id);
       setDoc(docRef, { mqtt_config: data.mqtt_config }, { merge: true });
@@ -358,12 +424,7 @@ export const DashboardProvider = ({ children }) => {
     if (data.diagram) saveDiagram(data.diagram.nodes || [], data.diagram.edges || []);
   };
 
-  // ── Diagram edges helpers ─────────────────────────────────────────────────
-  const saveDiagramEdges = useCallback((edges) => {
-    setDiagramEdges(edges);
-    saveDiagram(diagramNodesRef.current, edges);
-  }, [saveDiagram]);
-
+  // ── Context value ─────────────────────────────────────────────────────────
   return (
     <DashboardContext.Provider value={{
       // Edit mode
@@ -394,11 +455,12 @@ export const DashboardProvider = ({ children }) => {
       // Diagram display values
       nodeDisplayValues,
 
-      // ReactFlow
+      // ReactFlow diagram
       diagramNodes, diagramEdges,
       onNodesChange, onEdgesChange, onConnect,
       addDiagramNode, removeDiagramNode, updateDiagramNode,
       addInlineSymbol,
+      addJunction,
       updateEdge, saveDiagram,
     }}>
       {children}
