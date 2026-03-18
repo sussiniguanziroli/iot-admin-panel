@@ -13,7 +13,7 @@ import MqttAuditor from '../../mqtt-auditor/MqttAuditor';
 import {
   Building, ChevronDown, Loader2, MapPin, AlertCircle,
   Lock, Unlock, Activity, Settings, Plus, Wifi, WifiOff, Signal,
-} from 'lucide-react';
+  Layers,} from 'lucide-react';
 
 const Dashboard = () => {
   const navigate    = useNavigate();
@@ -189,50 +189,73 @@ const Dashboard = () => {
             )}
 
             {/* Admin controls */}
-            {can.editDashboard && (
-              <>
-                <Divider />
+            {/* Admin controls */}
+{can.editDashboard && (
+  <>
+    <Divider />
 
-                {/* Edit mode toggle */}
-                <button
-                  onClick={toggleEditMode}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                    border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                    transition: 'all 0.15s',
-                    backgroundColor: isEditMode
-                      ? (isDark ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.12)')
-                      : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'),
-                    color: isEditMode ? '#f97316' : t.textMuted,
-                    outline: isEditMode ? '1px solid rgba(249,115,22,0.4)' : `1px solid ${t.divider}`,
-                  }}
-                >
-                  {isEditMode ? <Unlock size={12} /> : <Lock size={12} />}
-                  {isEditMode ? 'Editando' : 'Bloqueado'}
-                </button>
+    {/* Edit mode toggle */}
+    <button
+      onClick={toggleEditMode}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 5,
+        padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+        border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+        transition: 'all 0.15s',
+        backgroundColor: isEditMode
+          ? (isDark ? 'rgba(249,115,22,0.18)' : 'rgba(249,115,22,0.12)')
+          : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'),
+        color: isEditMode ? '#f97316' : t.textMuted,
+        outline: isEditMode ? '1px solid rgba(249,115,22,0.4)' : `1px solid ${t.divider}`,
+      }}
+    >
+      {isEditMode ? <Unlock size={12} /> : <Lock size={12} />}
+      {isEditMode ? 'Editando' : 'Bloqueado'}
+    </button>
 
-                {/* Add node button — only visible in edit mode */}
-                {isEditMode && (
-                  <button
-                    onClick={() => schemaRef.current?.openAddModal()}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                      border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-                      backgroundColor: '#1d4ed8', color: '#fff',
-                      boxShadow: '0 2px 8px rgba(29,78,216,0.4)',
-                      transition: 'background-color 0.15s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2563eb'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-                  >
-                    <Plus size={13} />
-                    Nodo
-                  </button>
-                )}
-              </>
-            )}
+    {/* Botones de edición — solo visibles en edit mode */}
+    {isEditMode && (
+      <>
+        {/* + Nodo */}
+        <button
+          onClick={() => schemaRef.current?.openAddModal()}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+            border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+            backgroundColor: '#1d4ed8', color: '#fff',
+            boxShadow: '0 2px 8px rgba(29,78,216,0.35)',
+            transition: 'background-color 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2563eb'}
+          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+        >
+          <Plus size={13} />
+          Nodo
+        </button>
+
+        {/* + Símbolo */}
+        <button
+          onClick={() => schemaRef.current?.openSymbolModal()}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+            border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+            backgroundColor: isDark ? 'rgba(14,79,130,0.7)' : '#0c3d6e',
+            color: '#7dd3fc',
+            outline: '1px solid rgba(30,77,120,0.8)',
+            transition: 'background-color 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#0f4f8c'}
+          onMouseLeave={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(14,79,130,0.7)' : '#0c3d6e'}
+        >
+          <Layers size={13} />
+          Símbolo
+        </button>
+      </>
+    )}
+  </>
+)}
 
             {/* Super admin actions */}
             {isSuperAdmin && (
