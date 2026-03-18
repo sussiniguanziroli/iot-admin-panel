@@ -305,11 +305,11 @@ export const DashboardProvider = ({ children }) => {
   const addJunction = useCallback((x, y) => {
     const nodeId  = `jct-${Date.now()}`;
     const newNode = {
-      id:         nodeId,
-      type:      'junctionNode',
-      position:   { x: x ?? 300, y: y ?? 300 },
-      dragHandle: '.jct-drag',   // ← ReactFlow usa este selector para el drag
-      data:       {},
+      id:       nodeId,
+      type:    'junctionNode',
+      position: { x: x ?? 300, y: y ?? 300 },
+      // sin dragHandle acá — lo agrega SchematicView al vuelo
+      data:     {},
     };
     setDiagramNodes(prev => {
       const updated = [...prev, newNode];

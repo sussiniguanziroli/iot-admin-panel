@@ -1,4 +1,4 @@
-import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useCallback, forwardRef, useImperativeHandle, useMemo } from 'react';
 import {
   ReactFlow, Background, Controls, MiniMap,
   BackgroundVariant, ReactFlowProvider, Panel,
@@ -56,11 +56,20 @@ const SchematicCanvas = forwardRef((props, ref) => {
   const [isSymbolModalOpen,  setIsSymbolModalOpen]  = useState(false);
   const [rfInstance,         setRfInstance]         = useState(null);
 
+  // Inyecta dragHandle en junctionNodes al vuelo — sin tocar Firestore.
+  // Así funciona tanto con nodos nuevos como con los que vengan de la DB.
+  const nodesWithDragHandle = useMemo(() =>
+    diagramNodes.map(n =>
+      n.type === 'junctionNode'
+        ? { ...n, dragHandle: '.jct-drag' }
+        : n
+    ),
+  [diagramNodes]);
+
   useImperativeHandle(ref, () => ({
     openAddModal:    () => setIsAddModalOpen(true),
     openSymbolModal: () => setIsSymbolModalOpen(true),
 
-    // Coloca el empalme en el centro exacto del viewport actual
     addJunctionAtCenter: () => {
       if (!rfInstance) return;
       const center = rfInstance.screenToFlowPosition({
@@ -123,7 +132,7 @@ const SchematicCanvas = forwardRef((props, ref) => {
       backgroundColor: '#020617',
     }}>
       <ReactFlow
-        nodes={diagramNodes}
+        nodes={nodesWithDragHandle}
         edges={diagramEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
@@ -177,7 +186,6 @@ const SchematicCanvas = forwardRef((props, ref) => {
         <Panel position="bottom-left" style={{ bottom: 72, left: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
 
-            {/* Fit view */}
             <button
               onClick={() => rfInstance?.fitView({ padding: 0.3, duration: 400 })}
               title="Ajustar vista"
@@ -194,7 +202,6 @@ const SchematicCanvas = forwardRef((props, ref) => {
               <Maximize2 size={14} />
             </button>
 
-            {/* Sincronizando */}
             {loadingData && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -206,7 +213,6 @@ const SchematicCanvas = forwardRef((props, ref) => {
               </div>
             )}
 
-            {/* Hint modo edición */}
             {isEditMode && can.editDashboard && (
               <div style={{
                 padding: '6px 10px', borderRadius: 10,
@@ -222,9 +228,7 @@ const SchematicCanvas = forwardRef((props, ref) => {
 
         {diagramNodes.length === 0 && !loadingData && (
           <Panel position="top-center">
-            <div style={{
-              marginTop: 140, textAlign: 'center', pointerEvents: 'none',
-            }}>
+            <div style={{ marginTop: 140, textAlign: 'center', pointerEvents: 'none' }}>
               <p style={{
                 color: '#1a2741', fontSize: 13, fontWeight: 700,
                 margin: 0, fontFamily: 'monospace',
